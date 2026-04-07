@@ -818,7 +818,7 @@ function togFixa(id){S.fixas=S.fixas.map(f=>f.id===id?{...f,pago:!f.pago}:f);sav
 function delFixa(id){if(!confirm('Remover?'))return;S.fixas=S.fixas.filter(f=>f.id!==id);save();rFixas();rDash();toast('🗑️ Removido');}
 
 // ── RENDER DIÁRIAS ───────────────────────────────
-function rDiarias(){
+function clicouBarra(dia){const sai=S.diarias.filter(t=>t.tipo!=='ent'&&new Date(t.ts).getDate()==dia);R('tx-tot').textContent='Total: '+fmt(sai.reduce((a,t)=>a+Number(t.val),0));R('diarias-1').innerHTML=sai.length?sai.sort((a,b)=>b.ts-a.ts).map(t=>txHtml(t,true)).join(''):'<div class="empty"><div class="ei">🎉</div><div class="et">Nenhum gasto nesse dia</div></div>';}function rDiarias(){
   const sai=S.diarias.filter(t=>t.tipo!=='ent');
   R('tx-tot').textContent='Total: '+fmt(sai.reduce((a,t)=>a+Number(t.val),0));
   // bars
@@ -828,7 +828,7 @@ function rDiarias(){
   sai.forEach(t=>{const d=new Date(t.ts),df=Math.floor((now-d)/86400000);if(df<7){const i=(dow-df+7)%7;dt[i]+=Number(t.val);}});
   const mx=Math.max(...dt,1);
   const ord=[];for(let i=1;i<=7;i++)ord.push((dow+i)%7);
-  R('bars').innerHTML=ord.map(di=>`<div class="bc"><div class="bf ${di===dow?'cur':''}" style="height:${Math.max(3,Math.round(dt[di]/mx*80))}%"></div><div class="bd">${days[di].slice(0,3)}</div></div>`).join('');
+  R('bars').innerHTML=ord.map(di=>`<div class="bc"><div onclick="clicouBarra(${di})" class="bf ${di===dow?'cur':''}" style="height:${Math.max(3,Math.round(dt[di]/mx*80))}%"></div><div class="bd">${days[di].slice(0,3)}</div></div>`).join('');
   const el=R('diarias-l');
   const sorted=[...S.diarias].sort((a,b)=>b.ts-a.ts);
   el.innerHTML=!sorted.length
