@@ -364,7 +364,7 @@ html,body{width:100%;height:100%;font-family:-apple-system,BlinkMacSystemFont,'S
     <div class="pt" onclick="setPt(this)">3 meses</div>
   </div>
   <div style="font-size:.8rem;font-weight:700;margin-bottom:.4rem">Gastos por dia</div>
-  <div class="bars" id="bars"></div>
+  <div class="bars" onclick="clicouBarra(event)"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.45rem">
     <div style="font-size:.8rem;font-weight:700">Transações</div>
     <div style="font-size:.65rem;color:var(--mu)" id="tx-tot">Total: R$0</div>
@@ -818,7 +818,7 @@ function togFixa(id){S.fixas=S.fixas.map(f=>f.id===id?{...f,pago:!f.pago}:f);sav
 function delFixa(id){if(!confirm('Remover?'))return;S.fixas=S.fixas.filter(f=>f.id!==id);save();rFixas();rDash();toast('🗑️ Removido');}
 
 // ── RENDER DIÁRIAS ───────────────────────────────
-function rDiarias(){
+function clicouBarra(e){const b=e.target.closest('[data-dia]');if(!b)return;const dia=b.dataset.dia;const txs=(S.gastos||[]).filter(g=>g.dia==dia);let h=txs.map(g=>'<div style="padding:8px 0"><b>'+g.desc+'</b><span style="float:right">R$'+g.val+'</span></div>').join('');showModal('Gastos do dia '+dia,h||'Nenhum gasto');} function rDiarias(){
   const sai=S.diarias.filter(t=>t.tipo!=='ent');
   R('tx-tot').textContent='Total: '+fmt(sai.reduce((a,t)=>a+Number(t.val),0));
   // bars
