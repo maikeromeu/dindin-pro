@@ -105,11 +105,11 @@ body{font-family:var(--f);background:#0d1117 !important;color:var(--text);}
 .app-content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
 .tab-pane{display:none;padding:14px;padding-bottom:90px;}
 .tab-pane.active{display:block;}
-.tab-bar{background:#0a1520;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,8px);min-height:60px;}
-.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 2px 10px;gap:4px;background:none;border:none;cursor:pointer;color:#4a5f70;transition:color .2s;font-family:var(--f);}
+.tab-bar{background:#0a1520;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,4px);}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 1px 5px;gap:2px;background:none;border:none;cursor:pointer;color:#4a5f70;transition:color .2s;font-family:var(--f);}
 .tab-btn.active{color:var(--green);}
-.tab-btn .ti{font-size:26px;}
-.tab-btn .tl{font-size:11px;font-weight:600;letter-spacing:.2px;}
+.tab-btn .ti{font-size:18px;}
+.tab-btn .tl{font-size:8px;font-weight:600;letter-spacing:.1px;}
 
 /* CARDS */
 .card{background:#111c27;border-radius:var(--r);border:1px solid rgba(255,255,255,.06);margin-bottom:14px;overflow:hidden;}
@@ -1120,85 +1120,35 @@ function startVoice() {
   try { voiceRecognition.start(); } catch(e) {}
 }
 function parseVoiceCommand(text) {
-  // Normaliza: minúsculo, remove pontuação extra
-  const t = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-
   let valor = 0;
-
-  // 1) Tenta número + reais  ex: "50 reais", "12,50 reais"
-  const m1 = t.match(/(\d+(?:[,.]\d+)?)\s*(?:reais?|real)/);
-  if (m1) valor = parseFloat(m1[1].replace(',','.'));
-
-  // 2) Tenta "R$ 50" ou "r$50"
+  const m = text.match(/(\d+(?:[,\.]\d+)?)\s*reais?/);
+  if (m) valor = parseFloat(m[1].replace(',', '.'));
   if (!valor) {
-    const m2 = t.match(/r\$\s*(\d+(?:[,.]\d+)?)/);
-    if (m2) valor = parseFloat(m2[1].replace(',','.'));
+    const nums = {'zero':0,'um':1,'dois':2,'três':3,'quatro':4,'cinco':5,'seis':6,'sete':7,'oito':8,'nove':9,'dez':10,'vinte':20,'trinta':30,'quarenta':40,'cinquenta':50,'sessenta':60,'setenta':70,'oitenta':80,'noventa':90,'cem':100,'duzentos':200,'trezentos':300,'quinhentos':500,'mil':1000};
+    Object.entries(nums).forEach(([w,n]) => { if (text.includes(w)) valor += n; });
   }
-
-  // 3) Tenta número sozinho antes de palavra-chave  ex: "gastei 50 no mercado"
-  if (!valor) {
-    const m3 = t.match(/(?:gastei|comprei|paguei|custou|custa|gasto|foi)\s+(\d+(?:[,.]\d+)?)/);
-    if (m3) valor = parseFloat(m3[1].replace(',','.'));
-  }
-
-  // 4) Qualquer número no texto como último recurso
-  if (!valor) {
-    const m4 = t.match(/\b(\d+(?:[,.]\d+)?)\b/);
-    if (m4) valor = parseFloat(m4[1].replace(',','.'));
-  }
-
-  // 5) Fallback: palavras numéricas (soma inteligente — pega só o maior grupo)
-  if (!valor) {
-    const nums = {
-      'zero':0,'um':1,'uma':1,'dois':2,'duas':2,'tres':3,'quatro':4,
-      'cinco':5,'seis':6,'sete':7,'oito':8,'nove':9,'dez':10,
-      'onze':11,'doze':12,'treze':13,'quatorze':14,'quinze':15,
-      'dezesseis':16,'dezessete':17,'dezoito':18,'dezenove':19,
-      'vinte':20,'trinta':30,'quarenta':40,'cinquenta':50,
-      'sessenta':60,'setenta':70,'oitenta':80,'noventa':90,
-      'cem':100,'cento':100,'duzentos':200,'duzentas':200,
-      'trezentos':300,'quatrocentos':400,'quinhentos':500,
-      'seiscentos':600,'setecentos':700,'oitocentos':800,'novecentos':900,
-      'mil':1000
-    };
-    let acc = 0;
-    Object.entries(nums).forEach(([w,n]) => { if (t.includes(w)) acc += n; });
-    if (acc > 0) valor = acc;
-  }
-
-  // Detecta categoria
   let cat = '📦 Outros';
-  if (/mercado|supermercado|feira/.test(t)) cat = '🛒 Mercado';
-  else if (/gasolina|combustivel|uber|99|ibus|onibus|transporte|pedagio|estacionamento/.test(t)) cat = '🚗 Transporte';
-  else if (/restaurante|lanche|comida|almoco|jantar|pizza|ifood|rappi|hamburguer|sushi|acai/.test(t)) cat = '🍽️ Alimentação';
-  else if (/farmacia|remedio|medico|saude|consulta|exame|hospital/.test(t)) cat = '💊 Saúde';
-  else if (/roupa|tenis|sapato|shopping|calcado|camisa|calca/.test(t)) cat = '👕 Roupas';
-  else if (/cinema|lazer|netflix|spotify|jogo|show|ingresso/.test(t)) cat = '🎮 Lazer';
-  else if (/luz|agua|internet|conta|boleto|aluguel|condominio/.test(t)) cat = '💡 Contas';
-  else if (/salao|cabelo|barbearia|estetica|manicure/.test(t)) cat = '✂️ Beleza';
-
-  // Gera descrição limpando verbos e valores
-  let desc = text
-    .replace(/gastei|comprei|paguei|custou|custa|gasto|foi|no|na|do|da|de|um|uma|com/gi,'')
-    .replace(/reais?|real|r\$/gi,'')
-    .replace(/\d+(?:[,.]\d+)?/g,'')
-    .replace(/\s+/g,' ').trim();
-  if (!desc || desc.length < 3) desc = cat.replace(/^\S+\s/,''); // remove emoji
-  desc = desc.charAt(0).toUpperCase() + desc.slice(1).toLowerCase();
-
+  if (/mercado|supermercado/.test(text)) cat = '🛒 Mercado';
+  else if (/gasolina|combustível|uber|transporte/.test(text)) cat = '🚗 Transporte';
+  else if (/restaurante|lanche|comida|almoço|jantar|pizza/.test(text)) cat = '🍽️ Alimentação';
+  else if (/farmácia|remédio|médico|saúde/.test(text)) cat = '💊 Saúde';
+  else if (/roupa|tênis|sapato|shopping/.test(text)) cat = '👕 Roupas';
+  else if (/cinema|lazer|netflix/.test(text)) cat = '🎮 Lazer';
+  else if (/luz|água|internet|conta|boleto/.test(text)) cat = '💡 Contas';
+  let desc = text.replace(/gastei|comprei|paguei|reais?|r\$|\d+/gi,'').trim().replace(/\s+/g,' ');
+  if (!desc || desc.length < 3) desc = cat.split(' ').slice(1).join(' ');
+  desc = desc.charAt(0).toUpperCase() + desc.slice(1);
   if (valor > 0) {
     openModal('modal-gasto');
     setTimeout(() => {
       document.getElementById('g-desc').value = desc;
       document.getElementById('g-valor').value = valor.toFixed(2);
       const sel = document.getElementById('g-cat');
-      for (let i = 0; i < sel.options.length; i++) {
-        if (sel.options[i].text === cat) { sel.selectedIndex = i; break; }
-      }
-      showToast('🎤 Entendi: "' + desc + '" — R$ ' + valor.toFixed(2).replace('.',','));
+      for (let i = 0; i < sel.options.length; i++) { if (sel.options[i].text === cat) { sel.selectedIndex = i; break; } }
+      showToast('🎤 Entendi: "' + desc + '" — ' + fmt(valor));
     }, 300);
   } else {
-    showToast('Não entendi o valor. Tente: "Gastei 50 reais no mercado" 🎤');
+    showToast('Não entendi o valor. Ex: "Gastei 50 reais no mercado"');
   }
 }
 
