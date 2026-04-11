@@ -1095,63 +1095,118 @@ function triggerNotification(title, body) {
 }
 
 // ═══════ VOICE INPUT ═══════
-let voiceRecognition = null;
+// ═══════ VOICE INPUT (corrigido para iPhone/Safari) ═══════
+function norm(s) {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+}
+
 function initVoice() {
-  try {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return;
-    voiceRecognition = new SR();
-    voiceRecognition.lang = 'pt-BR';
-    voiceRecognition.continuous = false;
-    voiceRecognition.interimResults = false;
-    voiceRecognition.onresult = (e) => parseVoiceCommand(e.results[0][0].transcript.toLowerCase());
-    voiceRecognition.onerror = () => showToast('Não entendi, tente novamente 🎤');
-    voiceRecognition.onend = () => {
-      const btn = document.getElementById('voice-btn');
-      if (btn) { btn.style.background = 'var(--green)'; btn.textContent = '🎤 Voz'; }
-    };
-  } catch(e) {}
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) console.warn('SpeechRecognition não disponível');
 }
+
 function startVoice() {
-  if (!voiceRecognition) { showToast('Voz não disponível neste navegador'); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('Voz não disponível neste navegador'); return; }
   const btn = document.getElementById('voice-btn');
-  if (btn) { btn.style.background = 'var(--red)'; btn.textContent = '⏹ Parar'; }
-  showToast('🎤 Fale: "Gastei 50 reais no mercado"');
-  try { voiceRecognition.start(); } catch(e) {}
+  const rec = new SR();
+  rec.lang = 'pt-BR';
+  rec.continuous = false;
+  rec.interimResults = false;
+  rec.maxAlternatives = 3;
+  rec.onstart = () => {
+    if (btn) { btn.style.background = 'var(--red)'; btn.textContent = '⏹ Ouvindo...'; }
+    showToast('🎤 Fale: "Gastei 50 reais no mercado"');
+  };
+  rec.onresult = (e) => {
+    for (let i = 0; i < e.results[0].length; i++) {
+      const t = e.results[0][i].transcript;
+      if (t) { parseVoiceCommand(t); break; }
+    }
+  };
+  rec.onerror = (e) => {
+    showToast('Erro: ' + (e.error || 'tente novamente') + ' 🎤');
+    if (btn) { btn.style.background = 'var(--green)'; btn.textContent = '🎤 Voz'; }
+  };
+  rec.onend = () => {
+    if (btn) { btn.style.background = 'var(--green)'; btn.textContent = '🎤 Voz'; }
+  };
+  try { rec.start(); } catch(e) { showToast('Não foi possível iniciar o microfone'); }
 }
-function parseVoiceCommand(text) {
+
+function parseVoiceCommand(rawText) {
+  const text = norm(rawText);
+  const orig = rawText;
   let valor = 0;
-  const m = text.match(/(\d+(?:[,\.]\d+)?)\s*reais?/);
-  if (m) valor = parseFloat(m[1].replace(',', '.'));
+
+  const m1 = text.match(/(\d+(?:[,.]\d+)?)\s*reais?/);
+  if (m1) valor = parseFloat(m1[1].replace(',', '.'));
+
   if (!valor) {
-    const nums = {'zero':0,'um':1,'dois':2,'três':3,'quatro':4,'cinco':5,'seis':6,'sete':7,'oito':8,'nove':9,'dez':10,'vinte':20,'trinta':30,'quarenta':40,'cinquenta':50,'sessenta':60,'setenta':70,'oitenta':80,'noventa':90,'cem':100,'duzentos':200,'trezentos':300,'quinhentos':500,'mil':1000};
+    const m2 = text.match(/r\$\s*(\d+(?:[,.]\d+)?)/);
+    if (m2) valor = parseFloat(m2[1].replace(',', '.'));
+  }
+
+  if (!valor) {
+    const m3 = text.match(/(?:gastei|paguei|comprei|custou|custa|foi)\s+(\d+(?:[,.]\d+)?)/);
+    if (m3) valor = parseFloat(m3[1].replace(',', '.'));
+  }
+
+  if (!valor) {
+    const m4 = text.match(/(\d+(?:[,.]\d+)?)/);
+    if (m4) valor = parseFloat(m4[1].replace(',', '.'));
+  }
+
+  if (!valor) {
+    const nums = {
+      'zero':0,'um':1,'uma':1,'dois':2,'duas':2,'tres':3,'quatro':4,
+      'cinco':5,'seis':6,'sete':7,'oito':8,'nove':9,'dez':10,
+      'onze':11,'doze':12,'treze':13,'catorze':14,'quinze':15,
+      'dezesseis':16,'dezessete':17,'dezoito':18,'dezenove':19,
+      'vinte':20,'trinta':30,'quarenta':40,'cinquenta':50,
+      'sessenta':60,'setenta':70,'oitenta':80,'noventa':90,
+      'cem':100,'cento':100,'duzentos':200,'trezentos':300,
+      'quatrocentos':400,'quinhentos':500,'seiscentos':600,
+      'setecentos':700,'oitocentos':800,'novecentos':900,'mil':1000
+    };
     Object.entries(nums).forEach(([w,n]) => { if (text.includes(w)) valor += n; });
   }
+
   let cat = '📦 Outros';
-  if (/mercado|supermercado/.test(text)) cat = '🛒 Mercado';
-  else if (/gasolina|combustível|uber|transporte/.test(text)) cat = '🚗 Transporte';
-  else if (/restaurante|lanche|comida|almoço|jantar|pizza/.test(text)) cat = '🍽️ Alimentação';
-  else if (/farmácia|remédio|médico|saúde/.test(text)) cat = '💊 Saúde';
-  else if (/roupa|tênis|sapato|shopping/.test(text)) cat = '👕 Roupas';
-  else if (/cinema|lazer|netflix/.test(text)) cat = '🎮 Lazer';
-  else if (/luz|água|internet|conta|boleto/.test(text)) cat = '💡 Contas';
-  let desc = text.replace(/gastei|comprei|paguei|reais?|r\$|\d+/gi,'').trim().replace(/\s+/g,' ');
-  if (!desc || desc.length < 3) desc = cat.split(' ').slice(1).join(' ');
+  if (/mercado|supermercado|hortifruti|feira/.test(text)) cat = '🛒 Mercado';
+  else if (/gasolina|combustivel|uber|99|transporte|onibus|metro|trem|passagem/.test(text)) cat = '🚗 Transporte';
+  else if (/restaurante|lanche|comida|almoco|jantar|pizza|ifood|rappi|delivery|hamburguer|sushi|cafe/.test(text)) cat = '🍽️ Alimentação';
+  else if (/farmacia|remedio|medico|saude|consulta|plano/.test(text)) cat = '💊 Saúde';
+  else if (/roupa|tenis|sapato|shopping|camisa|calca|vestido/.test(text)) cat = '👕 Roupas';
+  else if (/cinema|lazer|netflix|spotify|jogo|show|ingresso/.test(text)) cat = '🎮 Lazer';
+  else if (/luz|agua|internet|conta|boleto|energia|gas/.test(text)) cat = '💡 Contas';
+  else if (/pet|racao|veterinario|cachorro|gato/.test(text)) cat = '🐾 Pets';
+  else if (/escola|curso|livro|faculdade/.test(text)) cat = '📚 Educação';
+  else if (/aluguel|condominio|iptu/.test(text)) cat = '🏠 Moradia';
+  else if (/viagem|hotel|passagem|aeroporto/.test(text)) cat = '✈️ Viagem';
+
+  let desc = orig
+    .replace(/gastei|comprei|paguei|custou|custa|foi|de|no|na|com|para|pelo|pela/gi, ' ')
+    .replace(/reais?|r\$|\d+(?:[,.]\d+)?/gi, ' ')
+    .trim().replace(/\s+/g,' ');
+  if (!desc || desc.length < 3) desc = cat.split(' ').slice(1).join(' ') || 'Gasto';
   desc = desc.charAt(0).toUpperCase() + desc.slice(1);
+
   if (valor > 0) {
     openModal('modal-gasto');
     setTimeout(() => {
       document.getElementById('g-desc').value = desc;
       document.getElementById('g-valor').value = valor.toFixed(2);
       const sel = document.getElementById('g-cat');
-      for (let i = 0; i < sel.options.length; i++) { if (sel.options[i].text === cat) { sel.selectedIndex = i; break; } }
-      showToast('🎤 Entendi: "' + desc + '" — ' + fmt(valor));
-    }, 300);
+      for (let i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].text === cat) { sel.selectedIndex = i; break; }
+      }
+      showToast('🎤 "' + desc + '" — ' + fmt(valor));
+    }, 400);
   } else {
     showToast('Não entendi o valor. Ex: "Gastei 50 reais no mercado"');
   }
 }
-
 // ═══════ DEBT PLAN ═══════
 function renderDebtPlan() {
   const el = document.getElementById('debt-list');
