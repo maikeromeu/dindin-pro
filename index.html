@@ -634,7 +634,8 @@ body{font-family:var(--f);background:#0d1117 !important;color:var(--text);}
     <div class="modal-handle"></div>
     <div class="modal-title">💼 Salários</div>
     <div class="mfg"><label class="mfl" id="sal-lbl1">Seu salário (R$)</label><input class="mfi" id="sal-val1" type="number" step="0.01" placeholder="0,00"/></div>
-    <div class="mfg" id="sal-p2-group"><label class="mfl">Salário do(a) parceiro(a) (R$)</label><input class="mfi" id="sal-val2" type="number" step="0.01" placeholder="0,00"/></div>
+    <div class="mfg" id="sal-p2-group"><label class="mfl">Nome do(a) parceiro(a)</label><input class="mfi" id="sal-nome2" placeholder="Ex: Larissa"/></div>
+    <div class="mfg" id="sal-p2-val-group"><label class="mfl">Salário do(a) parceiro(a) (R$)</label><input class="mfi" id="sal-val2" type="number" step="0.01" placeholder="0,00"/></div>
     <div class="mf-footer">
       <button class="btn-cancel" onclick="closeModal('modal-salary')">Cancelar</button>
       <button class="btn-save" onclick="saveSalary()">✓ Salvar</button>
@@ -791,7 +792,7 @@ function switchTab(tab){
   if(tab==='diarias'){state.selectedBar=null;renderDiarias();}
   if(tab==='dividas'){if(!state.dividas)state.dividas=[];renderDebtPlan();}
 }
-function deleteGasto(id,e){e.stopPropagation();state.gastos=state.gastos.filter(g=>g.id!==id);save();renderAll();showToast('Gasto removido');}
+function deleteGasto(id,e){e.stopPropagation();const g=state.gastos.find(x=>x.id===id);state.gastos=state.gastos.filter(x=>x.id!==id);localStorage.setItem('dindinpro_v4',JSON.stringify(state));saveAndSync('del',g?g.desc:'');renderAll();showToast('Gasto removido');}
 function saveDivida(){
   const nome=document.getElementById('d-nome').value.trim();
   const total=parseFloat(document.getElementById('d-total').value)||0;
@@ -837,7 +838,7 @@ function renderSalary(){
   let html='';
   const foto=state.user.foto?'<img src="'+state.user.foto+'"/>':(state.user.nome||'?')[0].toUpperCase();
   if(p1>0)html+=`<div class="sal-item"><div class="sal-av">${foto}</div><div class="sal-name">${state.user.nome||'Você'}</div><div class="sal-v">${fmt(p1)}</div></div>`;
-  if(state.user.modo==='casal'&&p2>0)html+=`<div class="sal-item"><div class="sal-av" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">L</div><div class="sal-name">Parceiro(a)</div><div class="sal-v">${fmt(p2)}</div></div>`;
+  if(state.user.modo==='casal'&&p2>0){const p2nome=state.user.nomeP2||'Parceiro(a)';const p2ini=p2nome[0].toUpperCase();html+=`<div class="sal-item"><div class="sal-av" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">${p2ini}</div><div class="sal-name">${p2nome}</div><div class="sal-v">${fmt(p2)}</div></div>`;}
   if(!p1&&!p2)html='<div class="tx-empty">Clique em Editar para configurar salários</div>';
   else html+=`<div class="sal-total"><span class="sal-total-lbl">Total familiar</span><span class="sal-total-v">${fmt(tot)}</span></div>`;
   document.getElementById('salary-body').innerHTML=html;
@@ -905,7 +906,7 @@ function renderFixas(){
       <button class="tx-del" onclick="deleteFixa('${f.id}',event)" style="margin-left:4px;">×</button>
     </div>`).join('');
 }
-function deleteFixa(id,e){e.stopPropagation();state.fixas=state.fixas.filter(f=>f.id!==id);save();renderFixas();renderInicio();showToast('Despesa removida');}
+function deleteFixa(id,e){e.stopPropagation();const f=state.fixas.find(x=>x.id===id);state.fixas=state.fixas.filter(x=>x.id!==id);localStorage.setItem('dindinpro_v4',JSON.stringify(state));saveAndSync('fixa',f?f.nome:'');renderFixas();renderInicio();showToast('Despesa removida');}
 function toggleFixa(id){const f=state.fixas.find(x=>x.id===id);if(f){f.pago=!f.pago;save();renderFixas();renderInicio();}}
 
 // DIÁRIAS
@@ -951,7 +952,7 @@ function renderExtrato(ccId,cc){
 function renderMetas(){const el=document.getElementById('metas-list');if(!state.metas.length){el.innerHTML='<div class="tx-empty">Nenhuma meta criada</div>';return;}el.innerHTML=state.metas.map(m=>{const pct=Math.min(100,Math.round((m.guardado/m.total)*100)||0);return`<div class="goal-item"><div class="goal-top"><div class="goal-left"><span class="goal-emoji">${m.emoji||'🎯'}</span><span class="goal-name">${m.nome}</span></div><span class="goal-pct">${pct}%</span></div><div class="goal-bar"><div class="goal-bar-fill" style="width:${pct}%"></div></div><div class="goal-bottom"><span>${fmt(m.guardado)} guardado</span><span>Meta: ${fmt(m.total)}</span></div></div>`;}).join('');}
 
 // MODALS
-function openModal(id){if(id==='modal-gasto'){updateCartaoSelect();document.getElementById('g-data').value=new Date().toISOString().split('T')[0];updateQuemSelect();}if(id==='modal-salary'){document.getElementById('sal-lbl1').textContent=(state.user.nome||'Você')+' (R$)';document.getElementById('sal-val1').value=state.salarios.p1||'';document.getElementById('sal-val2').value=state.salarios.p2||'';document.getElementById('sal-p2-group').style.display=state.user.modo==='casal'?'block':'none';}document.getElementById(id).classList.add('open');}
+function openModal(id){if(id==='modal-gasto'){updateCartaoSelect();document.getElementById('g-data').value=new Date().toISOString().split('T')[0];updateQuemSelect();}if(id==='modal-salary'){document.getElementById('sal-lbl1').textContent=(state.user.nome||'Você')+' (R$)';document.getElementById('sal-val1').value=state.salarios.p1||'';document.getElementById('sal-val2').value=state.salarios.p2||'';const n2el=document.getElementById('sal-nome2');if(n2el)n2el.value=state.user.nomeP2||'';const show=state.user.modo==='casal'?'block':'none';document.getElementById('sal-p2-group').style.display=show;const pg=document.getElementById('sal-p2-val-group');if(pg)pg.style.display=show;}document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 function selectPay(btn){document.querySelectorAll('.pay-btn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');const isCred=btn.dataset.pay==='credito';document.getElementById('credito-options').classList.toggle('hidden',!isCred);if(isCred)updateInstallInfo();}
@@ -961,7 +962,7 @@ function updateInstallInfo(){const n=parseInt(document.getElementById('g-parcela
 
 function saveGasto(){const desc=document.getElementById('g-desc').value.trim();const valor=parseFloat(document.getElementById('g-valor').value);const cat=document.getElementById('g-cat').value;const quem=document.getElementById('g-quem').value;const data=document.getElementById('g-data').value;const tipo=document.querySelector('.pay-btn.sel')?.dataset.pay||'debito';const cartaoId=tipo==='credito'?(document.getElementById('g-cartao').value||null):null;const parcelas=tipo==='credito'?parseInt(document.getElementById('g-parcelas').value)||1:1;if(!desc||!valor||!data){showToast('Preencha todos os campos');return;}if(parcelas>1){const grupoId='g'+Date.now();const pv=valor/parcelas;const base=new Date(data+'T12:00:00');for(let i=0;i<parcelas;i++){const d=new Date(base);d.setMonth(d.getMonth()+i);state.gastos.push({id:'g'+Date.now()+i,desc:`${desc} ${i+1}/${parcelas}`,valor:+pv.toFixed(2),cat,quem,data:d.toISOString().split('T')[0],tipo,cartaoId,parcelas,parcelaAtual:i+1,grupoId});}showToast(`${parcelas}x de ${fmt(valor/parcelas)} criadas ✓`);}else{state.gastos.push({id:'g'+Date.now(),desc,valor,cat,quem,data,tipo,cartaoId,parcelas:1,parcelaAtual:1,grupoId:null});showToast('Gasto salvo ✓');}document.getElementById('g-desc').value='';document.getElementById('g-valor').value='';document.getElementById('g-parcelas').value='1';document.getElementById('install-info').classList.add('hidden');closeModal('modal-gasto');save();renderAll();}
 function saveFixa(){const nome=document.getElementById('f-nome').value.trim();const valor=parseFloat(document.getElementById('f-valor').value);if(!nome||!valor){showToast('Preencha todos os campos');return;}const dia=document.getElementById('f-dia').value;const cat=document.getElementById('f-cat').value;state.fixas.push({id:'f'+Date.now(),nome,valor,dia,cat,pago:false});document.getElementById('f-nome').value='';document.getElementById('f-valor').value='';document.getElementById('f-dia').value='';closeModal('modal-fixa');save();renderFixas();renderInicio();showToast('Despesa fixa adicionada ✓');}
-function saveSalary(){state.salarios.p1=parseFloat(document.getElementById('sal-val1').value)||0;if(state.user.modo==='casal')state.salarios.p2=parseFloat(document.getElementById('sal-val2').value)||0;closeModal('modal-salary');save();renderInicio();showToast('Salários salvos ✓');}
+function saveSalary(){state.salarios.p1=parseFloat(document.getElementById('sal-val1').value)||0;if(state.user.modo==='casal'){state.salarios.p2=parseFloat(document.getElementById('sal-val2').value)||0;const n2=document.getElementById('sal-nome2').value.trim();if(n2)state.user.nomeP2=n2;}closeModal('modal-salary');save();renderInicio();showToast('Salários salvos ✓');}
 function saveCartao(){const nome=document.getElementById('cc-nome').value.trim();if(!nome){showToast('Digite o nome do cartão');return;}const bandeira=document.getElementById('cc-bandeira').value;const cor=document.getElementById('cc-cor').value;const limite=parseFloat(document.getElementById('cc-limite').value)||0;const fecha=parseInt(document.getElementById('cc-fecha').value)||1;state.cartoes.push({id:'c'+Date.now(),nome,bandeira,cor,limite,fecha});document.getElementById('cc-nome').value='';document.getElementById('cc-limite').value='';closeModal('modal-cartao');save();renderCartoes();showToast('Cartão adicionado ✓');}
 function saveMeta(){const emoji=document.getElementById('m-emoji').value||'🎯';const nome=document.getElementById('m-nome').value.trim();const total=parseFloat(document.getElementById('m-total').value)||0;const guardado=parseFloat(document.getElementById('m-guardado').value)||0;if(!nome||!total){showToast('Preencha nome e valor');return;}state.metas.push({id:'m'+Date.now(),emoji,nome,total,guardado});document.getElementById('m-nome').value='';document.getElementById('m-total').value='';document.getElementById('m-guardado').value='';closeModal('modal-meta');save();renderMetas();renderGoalsHome();showToast('Meta criada ✓');}
 
@@ -1004,27 +1005,46 @@ async function initFirebase() {
       const roomRef = ref(db, 'rooms/' + state.user.room);
       onValue(roomRef, (snap) => {
         const data = snap.val();
-        if (!data || Date.now() - fbLastWrite < 2000) return;
+        // Ignora updates gerados pelo próprio device nos últimos 3s
+        if (!data || Date.now() - fbLastWrite < 3000) return;
         let changed = false;
-        if (data.gastos) {
-          const ids = new Set(state.gastos.map(g => g.id));
-          data.gastos.forEach(g => { if (!ids.has(g.id)) { state.gastos.push(g); changed = true; } });
+
+        // Substitui listas COMPLETAS — garante deleção e atualização em tempo real
+        if (data.gastos && JSON.stringify(data.gastos) !== JSON.stringify(state.gastos)) {
+          state.gastos = data.gastos;
+          changed = true;
         }
-        if (data.fixas) {
-          const ids = new Set(state.fixas.map(f => f.id));
-          data.fixas.forEach(f => {
-            if (!ids.has(f.id)) { state.fixas.push(f); changed = true; }
-            else { const l = state.fixas.find(x => x.id === f.id); if (l && l.pago !== f.pago) { l.pago = f.pago; changed = true; } }
-          });
+        if (!data.gastos && state.gastos.length) {
+          state.gastos = [];
+          changed = true;
         }
-        if (data.cartoes) { const ids = new Set(state.cartoes.map(c => c.id)); data.cartoes.forEach(c => { if (!ids.has(c.id)) { state.cartoes.push(c); changed = true; } }); }
-        if (data.metas) { const ids = new Set(state.metas.map(m => m.id)); data.metas.forEach(m => { if (!ids.has(m.id)) { state.metas.push(m); changed = true; } }); }
-        if (data.salarios && JSON.stringify(data.salarios) !== JSON.stringify(state.salarios)) { state.salarios = data.salarios; changed = true; }
+        if (data.fixas && JSON.stringify(data.fixas) !== JSON.stringify(state.fixas)) {
+          state.fixas = data.fixas;
+          changed = true;
+        }
+        if (data.cartoes && JSON.stringify(data.cartoes) !== JSON.stringify(state.cartoes)) {
+          state.cartoes = data.cartoes;
+          changed = true;
+        }
+        if (data.metas && JSON.stringify(data.metas) !== JSON.stringify(state.metas)) {
+          state.metas = data.metas;
+          changed = true;
+        }
+        if (data.salarios && JSON.stringify(data.salarios) !== JSON.stringify(state.salarios)) {
+          state.salarios = data.salarios;
+          changed = true;
+        }
+        // Sincroniza nome do parceiro(a)
+        if (data.nomeP2 && data.nomeP2 !== state.user.nomeP2) {
+          state.user.nomeP2 = data.nomeP2;
+          changed = true;
+        }
         if (changed) {
           localStorage.setItem('dindinpro_v4', JSON.stringify(state));
           renderAll();
-          if (data.lastUser && data.lastUser !== state.user.nome && data.lastDesc) {
-            triggerNotification('💸 ' + data.lastUser + ' lançou um gasto!', data.lastDesc);
+          if (data.lastUser && data.lastUser !== state.user.nome && data.lastAction) {
+            const icons = {add:'💸', del:'🗑️', fixa:'📋'};
+            triggerNotification((icons[data.lastAction]||'💸') + ' ' + data.lastUser, data.lastDesc);
           }
         }
       });
@@ -1036,24 +1056,25 @@ async function initFirebase() {
   }
 }
 
-function fbPush(db) {
+function fbPush(db, action, desc) {
   if (!fbRef || !fbSet || !state.user.room) return;
   fbLastWrite = Date.now();
-  const lastGasto = state.gastos.length ? state.gastos[state.gastos.length - 1] : null;
   fbSet(fbRef(db, 'rooms/' + state.user.room), {
     gastos: state.gastos,
     fixas: state.fixas,
     cartoes: state.cartoes,
     metas: state.metas,
     salarios: state.salarios,
+    nomeP2: state.user.nomeP2 || '',
     lastUser: state.user.nome,
-    lastDesc: lastGasto ? lastGasto.desc : '',
+    lastAction: action || 'add',
+    lastDesc: desc || '',
     updatedAt: Date.now()
   }).catch(e => console.warn('FB push error:', e.message));
 }
 
 let fbPushTimer = null;
-saveAndSync = function() {
+saveAndSync = function(action, desc) {
   clearTimeout(fbPushTimer);
   fbPushTimer = setTimeout(async () => {
     try {
@@ -1061,10 +1082,10 @@ saveAndSync = function() {
         const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
         const { getDatabase } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js');
         const apps = getApps();
-        if (apps.length > 0) fbPush(getDatabase(apps[0]));
+        if (apps.length > 0) fbPush(getDatabase(apps[0]), action, desc);
       }
     } catch(e) {}
-  }, 1000);
+  }, 500);
 };
 
 function showSyncStatus(status) {
