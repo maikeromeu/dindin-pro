@@ -1054,12 +1054,15 @@ async function initFirebase() {
     fbRef = ref;
     fbSet = set;
     if (state.user.room) {
-      fbPush(db);
+      let firstLoad = true;
       const roomRef = ref(db, 'rooms/' + state.user.room);
       onValue(roomRef, (snap) => {
         const data = snap.val();
-        // Ignora updates gerados pelo próprio device nos últimos 3s
-        if (!data || Date.now() - fbLastWrite < 3000) return;
+        // Na primeira leitura sempre aceita (carregamento inicial)
+        // Nas seguintes, ignora updates do próprio device nos últimos 3s
+        if (!data) return;
+        if (!firstLoad && Date.now() - fbLastWrite < 3000) return;
+        firstLoad = false;
         let changed = false;
 
         // Substitui listas COMPLETAS — garante deleção e atualização em tempo real
@@ -1095,6 +1098,7 @@ async function initFirebase() {
         if (changed) {
           localStorage.setItem('dindinpro_v4', JSON.stringify(state));
           renderAll();
+          showSyncStatus('online');
           if (data.lastUser && data.lastUser !== state.user.nome && data.lastAction) {
             const icons = {add:'💸', del:'🗑️', fixa:'📋'};
             triggerNotification((icons[data.lastAction]||'💸') + ' ' + data.lastUser, data.lastDesc);
