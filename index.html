@@ -761,7 +761,22 @@ function selectMode(m){selectedMode=m;document.querySelectorAll('.mode-card').fo
 function genRoom(){return Math.random().toString(36).substr(2,6).toUpperCase();}
 document.getElementById('setup-room').value=genRoom();
 function copyRoom(){const r=state.user.room||document.getElementById('setup-room')?.value||'';navigator.clipboard?.writeText(r).catch(()=>{});showToast('Código copiado: '+r);}
-function enterApp(){const nome=document.getElementById('setup-name').value.trim();if(!nome){showToast('Digite seu nome');return;}const join=document.getElementById('setup-room-join')?.value.trim();const room=join||document.getElementById('setup-room').value;const isOwner=OWNER_CODES.includes(room.toUpperCase());state.user={...state.user,nome,modo:selectedMode,room,isOwner};save();initApp();initFirebase();initVoice();requestNotificationPermission();}
+function enterApp(){
+  const nome=document.getElementById('setup-name').value.trim();
+  if(!nome){showToast('Digite seu nome');return;}
+  const join=document.getElementById('setup-room-join')?.value.trim();
+  const room=join||document.getElementById('setup-room').value;
+  const isOwner=OWNER_CODES.includes(room.toUpperCase());
+  const entrouEmSalaExistente=!!join&&join.trim().length>0;
+  state.user={...state.user,nome,modo:selectedMode,room,isOwner};
+  // Se entrou numa sala existente, NÃO salva ainda — espera o Firebase trazer os dados
+  if(!entrouEmSalaExistente){save();}
+  else{localStorage.setItem('dindinpro_v4',JSON.stringify(state));}
+  initApp();
+  initFirebase(entrouEmSalaExistente);
+  initVoice();
+  requestNotificationPermission();
+}
 
 // INIT
 function initApp(){
@@ -1045,7 +1060,7 @@ let fbRef = null;
 let fbSet = null;
 let fbLastWrite = 0;
 
-async function initFirebase() {
+async function initFirebase(entrouEmSalaExistente) {
   try {
     const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
     const { getDatabase, ref, onValue, set } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js');
@@ -1056,13 +1071,21 @@ async function initFirebase() {
     if (state.user.room) {
       let firstLoad = true;
       const roomRef = ref(db, 'rooms/' + state.user.room);
+      // Só faz push inicial se NÃO entrou em sala existente
+      if (!entrouEmSalaExistente) fbPush(db);
       onValue(roomRef, (snap) => {
         const data = snap.val();
         // Na primeira leitura sempre aceita (carregamento inicial)
         // Nas seguintes, ignora updates do próprio device nos últimos 3s
-        if (!data) return;
+        if (!data) {
+          if(firstLoad && !entrouEmSalaExistente) fbPush(db);
+          return;
+        }
         if (!firstLoad && Date.now() - fbLastWrite < 3000) return;
+        const wasFirst = firstLoad;
         firstLoad = false;
+        // Se era sala nova e não tinha dados, faz push
+        if (wasFirst && entrouEmSalaExistente && !data.gastos && !data.fixas) fbPush(db);
         let changed = false;
 
         // Substitui listas COMPLETAS — garante deleção e atualização em tempo real
