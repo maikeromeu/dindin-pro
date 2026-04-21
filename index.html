@@ -822,9 +822,11 @@ function fmtDate(d){if(!d)return '—';const dt=new Date(d+'T12:00:00');return d
 // INÍCIO
 function renderInicio(){
   const g=gastosMes(state.currentMonth,state.currentYear);
-  const totalOut=g.reduce((s,x)=>s+Number(x.valor),0);
+  const totalDiarios=g.reduce((s,x)=>s+Number(x.valor),0);
   const totalIn=Number(state.salarios.p1||0)+Number(state.salarios.p2||0);
+  const fixasPagas=state.fixas.filter(f=>f.pago).reduce((s,f)=>s+Number(f.valor),0);
   const fixasPend=state.fixas.filter(f=>!f.pago).reduce((s,f)=>s+Number(f.valor),0);
+  const totalOut=totalDiarios+fixasPagas;
   const saldo=totalIn-totalOut;
   const el=document.getElementById('saldo-total');
   el.textContent=fmt(saldo);el.className='saldo-val '+(saldo>=0?'pos':'neg');
@@ -912,8 +914,59 @@ function toggleFixa(id){const f=state.fixas.find(x=>x.id===id);if(f){f.pago=!f.p
 // DIÁRIAS
 function renderDiarias(){renderBars();const g=gastosMes(state.currentMonth,state.currentYear);document.getElementById('tx-total-lbl').textContent=fmt(g.reduce((s,x)=>s+Number(x.valor),0));const el=document.getElementById('tx-list');const s=[...g].sort((a,b)=>new Date(b.data)-new Date(a.data));if(!s.length){el.innerHTML='<div class="tx-empty">Sem lançamentos este mês</div>';return;}el.innerHTML=s.map(txHTML).join('');}
 function setPeriod(p,btn){state.currentPeriod=p;state.selectedBar=null;document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.getElementById('bar-detail').classList.remove('show');renderBars();}
-function getBarData(){const{currentPeriod:p,currentMonth:m,currentYear:y}=state;let labels=[],values=[],groups=[];if(p==='semana'){const today=new Date(),DIAS=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];for(let i=6;i>=0;i--){const d=new Date(today);d.setDate(today.getDate()-i);const ds=d.toISOString().split('T')[0];const dg=state.gastos.filter(g=>g.data===ds);labels.push(DIAS[d.getDay()]);values.push(dg.reduce((s,x)=>s+Number(x.valor),0));groups.push(dg);}}else if(p==='mes'){const days=new Date(y,m+1,0).getDate();for(let d=1;d<=days;d++){const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const dg=state.gastos.filter(g=>g.data===ds);labels.push(String(d));values.push(dg.reduce((s,x)=>s+Number(x.valor),0));groups.push(dg);}}else{for(let i=2;i>=0;i--){let mm=m-i,yy=y;if(mm<0){mm+=12;yy--;}const dg=gastosMes(mm,yy);labels.push(MONTHS[mm].slice(0,3));values.push(dg.reduce((s,x)=>s+Number(x.valor),0));groups.push(dg);}}return{labels,values,groups};}
-function renderBars(){const c=document.getElementById('bars-container');const{labels,values}=getBarData();if(!labels.length){c.innerHTML='';return;}const max=Math.max(...values,1);c.innerHTML=labels.map((lbl,i)=>{const h=Math.max(3,Math.round((values[i]/max)*100));const hi=state.selectedBar===i;return`<div class="bar-col" onclick="selectBar(${i})"><div class="bar-fw"><div class="bar-fill${hi?' hi':''}" style="height:${h}%"></div></div><div class="bar-lbl">${lbl}</div></div>`;}).join('');}
+function getBarData(){
+  const{currentPeriod:p,currentMonth:m,currentYear:y}=state;
+  let labels=[],values=[],groups=[],todayIdx=-1;
+  const todayStr=new Date().toISOString().split('T')[0];
+  const todayM=new Date().getMonth(),todayY=new Date().getFullYear();
+  if(p==='semana'){
+    const today=new Date(),DIAS=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    for(let i=6;i>=0;i--){
+      const d=new Date(today);d.setDate(today.getDate()-i);
+      const ds=d.toISOString().split('T')[0];
+      const dg=state.gastos.filter(g=>g.data===ds);
+      labels.push(DIAS[d.getDay()]);
+      values.push(dg.reduce((s,x)=>s+Number(x.valor),0));
+      groups.push(dg);
+      if(ds===todayStr)todayIdx=labels.length-1;
+    }
+  }else if(p==='mes'){
+    const days=new Date(y,m+1,0).getDate();
+    const todayDay=new Date().getDate();
+    for(let d=1;d<=days;d++){
+      const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dg=state.gastos.filter(g=>g.data===ds);
+      labels.push(String(d));
+      values.push(dg.reduce((s,x)=>s+Number(x.valor),0));
+      groups.push(dg);
+      if(d===todayDay&&m===todayM&&y===todayY)todayIdx=labels.length-1;
+    }
+  }else{
+    for(let i=2;i>=0;i--){
+      let mm=m-i,yy=y;if(mm<0){mm+=12;yy--;}
+      const dg=gastosMes(mm,yy);
+      labels.push(MONTHS[mm].slice(0,3));
+      values.push(dg.reduce((s,x)=>s+Number(x.valor),0));
+      groups.push(dg);
+      if(mm===todayM&&yy===todayY)todayIdx=labels.length-1;
+    }
+  }
+  return{labels,values,groups,todayIdx};
+}
+function renderBars(){
+  const c=document.getElementById('bars-container');
+  const{labels,values,todayIdx}=getBarData();
+  if(!labels.length){c.innerHTML='';return;}
+  const max=Math.max(...values,1);
+  c.innerHTML=labels.map((lbl,i)=>{
+    const h=Math.max(3,Math.round((values[i]/max)*100));
+    const hi=state.selectedBar===i;
+    const isToday=todayIdx===i;
+    const lblHtml=isToday?`<div class="bar-lbl" style="color:var(--green);font-weight:700">${lbl}</div>`:`<div class="bar-lbl">${lbl}</div>`;
+    const todayDot=isToday?`<div style="width:5px;height:5px;border-radius:50%;background:var(--green);margin:2px auto 0;"></div>`:'';
+    return`<div class="bar-col" onclick="selectBar(${i})"><div class="bar-fw"><div class="bar-fill${hi?' hi':isToday&&!hi?' hi':''}" style="height:${h}%;${isToday&&!hi?'background:rgba(61,214,140,0.45);':''}" ></div></div>${lblHtml}${todayDot}</div>`;
+  }).join('');
+}
 function selectBar(i){state.selectedBar=state.selectedBar===i?null:i;renderBars();const det=document.getElementById('bar-detail');if(state.selectedBar===null){det.classList.remove('show');return;}const{labels,groups}=getBarData();const gs=groups[i];document.getElementById('bd-title').textContent='Gastos — '+labels[i];const list=document.getElementById('bd-list');if(!gs.length)list.innerHTML='<div class="bd-empty">Sem gastos neste período</div>';else list.innerHTML=gs.map(g=>`<div class="bd-row"><span class="bd-name">${catEmoji(g.cat)} ${g.desc}</span><span class="bd-val">-${fmt(g.valor)}</span></div>`).join('');det.classList.add('show');}
 
 // CARTÕES
