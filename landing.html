@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DinDin Pro — Finanças para Casais</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#080e14;--card:#0f1c28;--card2:#152233;
+  --green:#00e896;--green2:#00c47e;
+  --teal:#38bdf8;--red:#ff4d6d;--yellow:#ffd166;
+  --text:#f0f4f8;--text2:#7a95ab;--text3:#3a5268;
+  --f:'Sora',sans-serif;--m:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth;}
+body{font-family:var(--f);background:var(--bg);color:var(--text);overflow-x:hidden;}
+
+/* ── HERO ── */
+.hero{
+  min-height:100vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:60px 24px 40px;text-align:center;
+  position:relative;overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0,232,150,0.12), transparent 60%);
+  pointer-events:none;
+}
+.badge{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:6px 16px;border-radius:99px;
+  border:1px solid rgba(0,232,150,0.3);
+  background:rgba(0,232,150,0.08);
+  font-size:12px;font-weight:700;color:var(--green);
+  letter-spacing:.5px;text-transform:uppercase;
+  margin-bottom:24px;
+}
+.hero h1{
+  font-size:clamp(36px,8vw,72px);font-weight:900;
+  line-height:1.05;letter-spacing:-2px;
+  margin-bottom:20px;
+}
+.hero h1 em{
+  font-style:normal;
+  background:linear-gradient(135deg,var(--green),var(--teal));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.hero p{
+  font-size:clamp(16px,3vw,20px);color:var(--text2);
+  max-width:520px;margin:0 auto 40px;line-height:1.6;font-weight:400;
+}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:56px;}
+.btn-primary{
+  padding:16px 32px;border-radius:14px;border:none;cursor:pointer;
+  background:var(--green);color:#080e14;font-size:16px;font-weight:800;
+  font-family:var(--f);letter-spacing:-.3px;
+  transition:all .2s;box-shadow:0 8px 32px rgba(0,232,150,0.3);
+  text-decoration:none;display:inline-block;
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,232,150,0.4);}
+.btn-secondary{
+  padding:16px 32px;border-radius:14px;cursor:pointer;
+  background:transparent;color:var(--text);font-size:16px;font-weight:600;
+  font-family:var(--f);border:1px solid rgba(255,255,255,0.15);
+  transition:all .2s;text-decoration:none;display:inline-block;
+}
+.btn-secondary:hover{border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.05);}
+
+/* ── PHONE MOCKUP ── */
+.phone-preview{
+  position:relative;width:min(280px,75vw);margin:0 auto;
+}
+.phone-frame{
+  background:var(--card);border-radius:40px;padding:12px;
+  border:1.5px solid rgba(0,232,150,0.15);
+  box-shadow:0 40px 80px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.04);
+}
+.phone-screen{
+  background:#080e14;border-radius:30px;overflow:hidden;
+  aspect-ratio:9/19;position:relative;
+}
+.ps-header{
+  background:linear-gradient(180deg,#0c1a26,#080e14);
+  padding:14px 16px 12px;border-bottom:1px solid rgba(0,232,150,0.06);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.ps-name{font-size:18px;font-weight:800;letter-spacing:-.5px;}
+.ps-month{font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px;
+  background:rgba(0,232,150,0.08);border:1px solid rgba(0,232,150,0.15);color:var(--text2);}
+.ps-saldo-area{padding:14px;background:var(--card);margin:10px;border-radius:20px;
+  border:1px solid rgba(0,232,150,0.1);}
+.ps-saldo-lbl{font-size:9px;color:var(--text3);font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.ps-saldo-val{font-size:28px;font-weight:800;color:var(--green);font-family:var(--m);letter-spacing:-1px;margin-bottom:12px;}
+.ps-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+.ps-stat{background:rgba(255,255,255,0.03);border-radius:8px;padding:7px;border:1px solid rgba(255,255,255,0.04);}
+.ps-stat-lbl{font-size:8px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;}
+.ps-stat-val{font-size:11px;font-weight:700;font-family:var(--m);}
+.ps-tx{padding:8px 10px;margin:8px 10px 0;background:var(--card);border-radius:14px;border:1px solid rgba(255,255,255,0.04);}
+.ps-tx-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+.ps-tx-item:last-child{border-bottom:none;}
+.ps-tx-ico{width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.ps-tx-info{flex:1;}
+.ps-tx-name{font-size:11px;font-weight:600;}
+.ps-tx-meta{font-size:9px;color:var(--text3);}
+.ps-tx-amt{font-size:11px;font-weight:700;font-family:var(--m);color:var(--red);}
+.ps-tx-amt.in{color:var(--green);}
+.ps-tabbar{
+  position:absolute;bottom:0;left:0;right:0;
+  background:rgba(8,14,20,0.95);backdrop-filter:blur(20px);
+  border-top:1px solid rgba(0,232,150,0.06);
+  display:flex;padding:8px 0 16px;
+}
+.ps-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.ps-tab-ico{font-size:14px;}
+.ps-tab-lbl{font-size:7px;font-weight:600;color:var(--text3);}
+.ps-tab.active .ps-tab-lbl{color:var(--green);}
+.ps-tab.active .ps-tab-ico{filter:drop-shadow(0 0 4px var(--green));}
+
+/* Glow verde no topo do phone */
+.phone-glow{
+  position:absolute;top:-40px;left:50%;transform:translateX(-50%);
+  width:200px;height:200px;
+  background:radial-gradient(circle,rgba(0,232,150,0.15),transparent 70%);
+  pointer-events:none;
+}
+
+/* ── SECTION BASE ── */
+section{padding:80px 24px;}
+.section-badge{
+  display:inline-block;font-size:11px;font-weight:700;
+  color:var(--green);letter-spacing:1px;text-transform:uppercase;
+  margin-bottom:12px;
+}
+.section-title{font-size:clamp(28px,5vw,44px);font-weight:800;letter-spacing:-.5px;line-height:1.1;margin-bottom:16px;}
+.section-title em{font-style:normal;color:var(--green);}
+.section-sub{font-size:16px;color:var(--text2);max-width:480px;line-height:1.6;}
+
+/* ── PROBLEMA ── */
+.problem{background:linear-gradient(180deg,var(--bg) 0%,#0a1520 100%);}
+.problem-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:40px;}
+.prob-card{
+  background:var(--card);border-radius:20px;padding:24px;
+  border:1px solid rgba(255,77,109,0.15);
+}
+.prob-emoji{font-size:28px;margin-bottom:12px;}
+.prob-title{font-size:16px;font-weight:700;margin-bottom:8px;color:#ff4d6d;}
+.prob-desc{font-size:14px;color:var(--text2);line-height:1.5;}
+
+/* ── FEATURES ── */
+.features{text-align:center;}
+.features-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:20px;margin-top:48px;text-align:left;
+}
+.feat-card{
+  background:var(--card);border-radius:22px;padding:28px;
+  border:1px solid rgba(255,255,255,0.06);
+  transition:border-color .2s,transform .2s;
+}
+.feat-card:hover{border-color:rgba(0,232,150,0.2);transform:translateY(-3px);}
+.feat-ico{
+  width:48px;height:48px;border-radius:14px;
+  background:rgba(0,232,150,0.1);border:1px solid rgba(0,232,150,0.15);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;margin-bottom:16px;
+}
+.feat-title{font-size:18px;font-weight:700;margin-bottom:8px;}
+.feat-desc{font-size:14px;color:var(--text2);line-height:1.6;}
+.feat-tag{
+  display:inline-block;margin-top:12px;font-size:11px;font-weight:700;
+  padding:3px 10px;border-radius:20px;
+  background:rgba(0,232,150,0.1);color:var(--green);
+}
+
+/* ── COMPARATIVO ── */
+.compare{background:#0a1520;}
+.compare-table{margin-top:40px;border-radius:20px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);}
+.ct-header{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;background:rgba(255,255,255,0.04);padding:16px;}
+.ct-header div{font-size:12px;font-weight:700;text-align:center;color:var(--text2);}
+.ct-header .ct-dindin{color:var(--green);}
+.ct-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);align-items:center;}
+.ct-row:last-child{border-bottom:none;}
+.ct-row:nth-child(even){background:rgba(255,255,255,0.02);}
+.ct-feat{font-size:13px;font-weight:600;}
+.ct-val{text-align:center;font-size:16px;}
+.ct-yes{color:var(--green);}
+.ct-no{color:var(--text3);}
+.ct-partial{color:var(--yellow);}
+.ct-dindin-col{background:rgba(0,232,150,0.04);}
+
+/* ── PREÇO ── */
+.pricing{text-align:center;}
+.price-card{
+  max-width:400px;margin:48px auto 0;
+  background:linear-gradient(160deg,var(--card),var(--card2));
+  border-radius:28px;padding:40px 32px;
+  border:1px solid rgba(0,232,150,0.2);
+  box-shadow:0 40px 80px rgba(0,0,0,0.4),0 0 60px rgba(0,232,150,0.05);
+  position:relative;overflow:hidden;
+}
+.price-card::before{
+  content:'';position:absolute;top:-60px;right:-60px;
+  width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,rgba(0,232,150,0.08),transparent);
+}
+.price-badge{
+  display:inline-block;padding:6px 16px;border-radius:99px;
+  background:rgba(0,232,150,0.15);color:var(--green);
+  font-size:12px;font-weight:700;letter-spacing:.5px;
+  text-transform:uppercase;margin-bottom:24px;
+}
+.price-name{font-size:24px;font-weight:800;margin-bottom:8px;}
+.price-val{
+  font-size:56px;font-weight:900;font-family:var(--m);
+  color:var(--green);letter-spacing:-2px;line-height:1;margin-bottom:4px;
+}
+.price-period{font-size:14px;color:var(--text2);margin-bottom:28px;}
+.price-features{list-style:none;text-align:left;margin-bottom:32px;}
+.price-features li{
+  padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);
+  font-size:14px;display:flex;align-items:center;gap:10px;
+}
+.price-features li:last-child{border-bottom:none;}
+.pf-check{color:var(--green);font-size:16px;flex-shrink:0;}
+.price-note{font-size:12px;color:var(--text3);margin-top:16px;}
+
+/* ── DEPOIMENTOS ── */
+.testimonials{background:#0a1520;}
+.test-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:40px;}
+.test-card{background:var(--card);border-radius:20px;padding:24px;border:1px solid rgba(255,255,255,0.06);}
+.test-stars{color:var(--yellow);font-size:14px;margin-bottom:12px;}
+.test-text{font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:16px;font-style:italic;}
+.test-author{display:flex;align-items:center;gap:10px;}
+.test-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--teal));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#080e14;}
+.test-name{font-size:13px;font-weight:700;}
+.test-loc{font-size:11px;color:var(--text3);}
+
+/* ── FAQ ── */
+.faq{max-width:640px;margin:0 auto;}
+.faq-item{border-bottom:1px solid rgba(255,255,255,0.06);padding:20px 0;}
+.faq-q{font-size:16px;font-weight:700;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:16px;}
+.faq-q span{color:var(--green);}
+.faq-a{font-size:14px;color:var(--text2);line-height:1.6;margin-top:12px;display:none;}
+.faq-item.open .faq-a{display:block;}
+.faq-item.open .faq-q span{transform:rotate(45deg);display:inline-block;}
+
+/* ── CTA FINAL ── */
+.cta-final{text-align:center;padding:100px 24px;position:relative;overflow:hidden;}
+.cta-final::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 70% 50% at 50% 50%,rgba(0,232,150,0.08),transparent 60%);
+}
+.cta-final h2{font-size:clamp(32px,6vw,56px);font-weight:900;letter-spacing:-1px;margin-bottom:16px;}
+.cta-final p{font-size:18px;color:var(--text2);margin-bottom:40px;}
+
+/* ── FOOTER ── */
+footer{border-top:1px solid rgba(255,255,255,0.06);padding:32px 24px;text-align:center;color:var(--text3);font-size:13px;}
+
+/* ── STICKY CTA (mobile) ── */
+.sticky-cta{
+  position:fixed;bottom:0;left:0;right:0;z-index:50;
+  padding:12px 20px 20px;
+  background:linear-gradient(180deg,transparent,rgba(8,14,20,0.98) 30%);
+  display:none;
+}
+@media(max-width:600px){.sticky-cta{display:block;}}
+.sticky-cta-btn{
+  width:100%;padding:16px;border-radius:16px;border:none;cursor:pointer;
+  background:var(--green);color:#080e14;font-size:16px;font-weight:800;
+  font-family:var(--f);box-shadow:0 8px 32px rgba(0,232,150,0.4);
+}
+
+/* ── ANIM ── */
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.phone-preview{animation:float 4s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.sync-indicator{animation:pulse 2s infinite;}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="badge">✦ Novo · Versão 2025</div>
+  <h1>Finanças para<br><em>casais de verdade</em></h1>
+  <p>O único app que sincroniza em tempo real entre dois celulares. Um lança, o outro vê na hora. Sem briga sobre dinheiro.</p>
+  <div class="hero-btns">
+    <a href="https://dindin-pro.vercel.app" class="btn-primary">Experimentar grátis →</a>
+    <a href="#features" class="btn-secondary">Ver funcionalidades</a>
+  </div>
+
+  <!-- Phone mockup -->
+  <div class="phone-preview">
+    <div class="phone-glow"></div>
+    <div class="phone-frame">
+      <div class="phone-screen">
+        <div class="ps-header">
+          <div>
+            <div style="font-size:10px;color:#3a5268;font-weight:500;">Boa noite 🌙</div>
+            <div class="ps-name">Maike</div>
+          </div>
+          <div class="ps-month">Abr 2025</div>
+        </div>
+        <div class="ps-saldo-area">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <div class="ps-saldo-lbl">Saldo disponível</div>
+            <div class="sync-indicator" style="font-size:9px;color:var(--green);font-weight:700;">✓ Sync</div>
+          </div>
+          <div class="ps-saldo-val">R$4.280,00</div>
+          <div class="ps-stats">
+            <div class="ps-stat"><div class="ps-stat-lbl">Entradas</div><div class="ps-stat-val" style="color:var(--green);">+14.6k</div></div>
+            <div class="ps-stat"><div class="ps-stat-lbl">Saídas</div><div class="ps-stat-val" style="color:var(--red);">-10.3k</div></div>
+            <div class="ps-stat"><div class="ps-stat-lbl">A pagar</div><div class="ps-stat-val" style="color:var(--yellow);">R$496</div></div>
+          </div>
+        </div>
+        <div class="ps-tx">
+          <div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Hoje</div>
+          <div class="ps-tx-item">
+            <div class="ps-tx-ico" style="background:rgba(255,165,0,.12);">🚗</div>
+            <div class="ps-tx-info"><div class="ps-tx-name">Gasolina</div><div class="ps-tx-meta">Maike · Transporte</div></div>
+            <div class="ps-tx-amt">-R$85,00</div>
+          </div>
+          <div class="ps-tx-item">
+            <div class="ps-tx-ico" style="background:rgba(0,232,150,.08);">💰</div>
+            <div class="ps-tx-info"><div class="ps-tx-name">Freelance</div><div class="ps-tx-meta">Larissa · Entrada</div></div>
+            <div class="ps-tx-amt in">+R$800,00</div>
+          </div>
+          <div class="ps-tx-item">
+            <div class="ps-tx-ico" style="background:rgba(61,200,255,.1);">🛒</div>
+            <div class="ps-tx-info"><div class="ps-tx-name">Supermercado</div><div class="ps-tx-meta">Casal · Mercado</div></div>
+            <div class="ps-tx-amt">-R$213,00</div>
+          </div>
+        </div>
+        <div class="ps-tabbar">
+          <div class="ps-tab active"><div class="ps-tab-ico">🏠</div><div class="ps-tab-lbl" style="color:var(--green);">Início</div></div>
+          <div class="ps-tab"><div class="ps-tab-ico">📋</div><div class="ps-tab-lbl">Fixas</div></div>
+          <div class="ps-tab"><div class="ps-tab-ico">💸</div><div class="ps-tab-lbl">Diárias</div></div>
+          <div class="ps-tab"><div class="ps-tab-ico">💳</div><div class="ps-tab-lbl">Cartões</div></div>
+          <div class="ps-tab"><div class="ps-tab-ico">🎯</div><div class="ps-tab-lbl">Metas</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEMA -->
+<section class="problem">
+  <div style="max-width:960px;margin:0 auto;">
+    <div class="section-badge">O problema</div>
+    <h2 class="section-title">O dinheiro que desaparece<br><em>sem explicação</em></h2>
+    <p class="section-sub">Mais de 50% dos casais brigam por dinheiro. A causa? Falta de transparência e controle compartilhado.</p>
+    <div class="problem-grid">
+      <div class="prob-card">
+        <div class="prob-emoji">😤</div>
+        <div class="prob-title">"Quem gastou isso?"</div>
+        <div class="prob-desc">Sem controle compartilhado, sempre aparece um gasto que ninguém assume. Discussão garantida no fim do mês.</div>
+      </div>
+      <div class="prob-card">
+        <div class="prob-emoji">📱</div>
+        <div class="prob-title">Dois apps, zero sync</div>
+        <div class="prob-desc">Apps individuais não foram feitos para casais. Cada um controla o seu e ninguém tem visão do todo.</div>
+      </div>
+      <div class="prob-card">
+        <div class="prob-emoji">📊</div>
+        <div class="prob-title">Planilha abandonada</div>
+        <div class="prob-desc">A planilha começa bem, mas em 2 semanas ninguém mais atualiza. É complexo demais para o dia a dia.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div style="max-width:960px;margin:0 auto;">
+    <div class="section-badge">Funcionalidades</div>
+    <h2 class="section-title">Tudo que um casal<br><em>precisa de verdade</em></h2>
+    <div class="features-grid">
+      <div class="feat-card">
+        <div class="feat-ico">🔄</div>
+        <div class="feat-title">Sync em tempo real</div>
+        <div class="feat-desc">Um lança no celular, aparece instantaneamente no do outro. Alimentado pelo Firebase — funciona até em conexão fraca.</div>
+        <div class="feat-tag">Exclusivo casal</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-ico">🎤</div>
+        <div class="feat-title">Lançamento por voz</div>
+        <div class="feat-desc">Fala "iFood trinta reais" e o app detecta valor e categoria automaticamente. Funciona no iPhone e Android.</div>
+        <div class="feat-tag">Inteligente</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-ico">💳</div>
+        <div class="feat-title">Cartões com fatura real</div>
+        <div class="feat-desc">Cadastre a data de fechamento de cada cartão. O app avisa quando a fatura está prestes a fechar e separa os ciclos automaticamente.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-ico">📦</div>
+        <div class="feat-title">Parcelamento estilo Nubank</div>
+        <div class="feat-desc">Lance uma compra parcelada e o app distribui automaticamente nas faturas dos próximos meses. 1/3, 2/3, 3/3.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-ico">🧨</div>
+        <div class="feat-title">Plano bola de neve</div>
+        <div class="feat-desc">Cadastre suas dívidas e veja a estratégia inteligente para quitar tudo mais rápido, com progresso visual e data de quitação.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-ico">🎯</div>
+        <div class="feat-title">Metas financeiras</div>
+        <div class="feat-desc">Criem metas juntos — viagem, carro, reforma — e acompanhem o progresso mês a mês até realizar o sonho.</div>
+        <div class="feat-tag">A dois</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARATIVO -->
+<section class="compare">
+  <div style="max-width:800px;margin:0 auto;">
+    <div class="section-badge">Comparativo</div>
+    <h2 class="section-title">Por que DinDin Pro<br>e não o <em>concorrente?</em></h2>
+    <div class="compare-table">
+      <div class="ct-header">
+        <div style="text-align:left;">Funcionalidade</div>
+        <div class="ct-dindin" style="font-size:14px;">💚 DinDin Pro</div>
+        <div>Mobills</div>
+        <div>Pierre</div>
+      </div>
+      <div class="ct-row">
+        <div class="ct-feat">Sync para casal</div>
+        <div class="ct-val ct-dindin-col ct-yes">✓</div>
+        <div class="ct-val ct-no">✗</div>
+        <div class="ct-val ct-no">✗</div>
+      </div>
+      <div class="ct-row">
+        <div class="ct-feat">Pagamento único vitalício</div>
+        <div class="ct-val ct-dindin-col ct-yes">✓</div>
+        <div class="ct-val ct-no">✗ Mensal</div>
+        <div class="ct-val ct-no">✗ Mensal</div>
+      </div>
+      <div class="ct-row">
+        <div class="ct-feat">Lançamento por voz</div>
+        <div class="ct-val ct-dindin-col ct-yes">✓</div>
+        <div class="ct-val ct-no">✗</div>
+        <div class="ct-val ct-no">✗</div>
+      </div>
+      <div class="ct-row">
+        <div class="ct-feat">Fatura por data de fechamento</div>
+        <div class="ct-val ct-dindin-col ct-yes">✓</div>
+        <div class="ct-val ct-yes">✓</div>
+        <div class="ct-val ct-partial">Parcial</div>
+      </div>
+      <div class="ct-row">
+        <div class="ct-feat">Sem precisar de CPF</div>
+        <div class="ct-val ct-dindin-col ct-yes">✓</div>
+        <div class="ct-val ct-yes">✓</div>
+        <div class="ct-val ct-no">✗ Obrigatório</div>
+      </div>
+      <div class="ct-row">
+        <div class="ct-feat">Plano bola de neve</div>
+        <div class="ct-val ct-dindin-col ct-yes">✓</div>
+        <div class="ct-val ct-partial">Básico</div>
+        <div class="ct-val ct-no">✗</div>
+      </div>
+      <div class="ct-row">
+        <div class="ct-feat">Funciona offline</div>
+        <div class="ct-val ct-dindin-col ct-yes">✓</div>
+        <div class="ct-val ct-yes">✓</div>
+        <div class="ct-val ct-no">✗</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PREÇO -->
+<section class="pricing" id="preco">
+  <div style="max-width:960px;margin:0 auto;">
+    <div class="section-badge">Preço</div>
+    <h2 class="section-title">Simples.<br><em>Uma vez. Para sempre.</em></h2>
+    <p class="section-sub" style="margin:0 auto;">Sem assinatura mensal. Sem surpresa na fatura. Paga uma vez e usa para sempre — você e seu(a) parceiro(a).</p>
+    <div class="price-card">
+      <div class="price-badge">🔥 Oferta de lançamento</div>
+      <div class="price-name">DinDin Pro — Casal</div>
+      <div style="display:flex;align-items:baseline;justify-content:center;gap:4px;">
+        <span style="font-size:18px;color:var(--text2);font-family:var(--m);">R$</span>
+        <div class="price-val">27</div>
+        <span style="font-size:24px;font-family:var(--m);color:var(--green);">,90</span>
+      </div>
+      <div class="price-period">pagamento único · acesso vitalício</div>
+      <ul class="price-features">
+        <li><span class="pf-check">✓</span> App completo para você e parceiro(a)</li>
+        <li><span class="pf-check">✓</span> Sincronização em tempo real</li>
+        <li><span class="pf-check">✓</span> Lançamento por voz</li>
+        <li><span class="pf-check">✓</span> Cartões com controle de fatura</li>
+        <li><span class="pf-check">✓</span> Parcelamento automático</li>
+        <li><span class="pf-check">✓</span> Plano bola de neve (dívidas)</li>
+        <li><span class="pf-check">✓</span> Metas financeiras a dois</li>
+        <li><span class="pf-check">✓</span> Atualizações futuras inclusas</li>
+      </ul>
+      <a href="https://dindin-pro.vercel.app" class="btn-primary" style="width:100%;text-align:center;display:block;">Quero o DinDin Pro →</a>
+      <div class="price-note">💳 Aceita todos os cartões · Pix · Boleto</div>
+    </div>
+  </div>
+</section>
+
+<!-- DEPOIMENTOS -->
+<section class="testimonials">
+  <div style="max-width:960px;margin:0 auto;text-align:center;">
+    <div class="section-badge">Depoimentos</div>
+    <h2 class="section-title">Casais que pararam<br><em>de brigar por dinheiro</em></h2>
+    <div class="test-grid" style="margin-top:40px;">
+      <div class="test-card">
+        <div class="test-stars">★★★★★</div>
+        <div class="test-text">"A gente nunca sabia para onde ia o dinheiro no fim do mês. Com o DinDin Pro a transparência mudou tudo — até nossas conversas sobre dinheiro ficaram mais tranquilas."</div>
+        <div class="test-author">
+          <div class="test-avatar">A</div>
+          <div><div class="test-name">Amanda S.</div><div class="test-loc">São Paulo, SP</div></div>
+        </div>
+      </div>
+      <div class="test-card">
+        <div class="test-stars">★★★★★</div>
+        <div class="test-text">"O lançamento por voz é sensacional. Saí do mercado, falei os gastos no carro e já apareceu no celular da minha esposa. Ela adorou."</div>
+        <div class="test-author">
+          <div class="test-avatar" style="background:linear-gradient(135deg,#6d28d9,#4c1d95)">R</div>
+          <div><div class="test-name">Rafael M.</div><div class="test-loc">Belo Horizonte, MG</div></div>
+        </div>
+      </div>
+      <div class="test-card">
+        <div class="test-stars">★★★★★</div>
+        <div class="test-text">"Já tentamos Mobills, Organizze e até planilha. Nenhum era para casal de verdade. O DinDin Pro é o único que funciona para nós dois juntos."</div>
+        <div class="test-author">
+          <div class="test-avatar" style="background:linear-gradient(135deg,#dc2626,#991b1b)">C</div>
+          <div><div class="test-name">Carol & Felipe</div><div class="test-loc">Curitiba, PR</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section style="padding:80px 24px;">
+  <div style="max-width:640px;margin:0 auto;text-align:center;">
+    <div class="section-badge">Dúvidas</div>
+    <h2 class="section-title" style="margin-bottom:40px;">Perguntas<br><em>frequentes</em></h2>
+    <div class="faq">
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Como funciona o sync entre os dois celulares? <span>+</span></div>
+        <div class="faq-a">Usamos o Firebase do Google para sincronização em tempo real. Quando um lança um gasto, o outro vê em menos de 1 segundo — mesmo estando em cidades diferentes.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Precisa instalar algum app? <span>+</span></div>
+        <div class="faq-a">Não! O DinDin Pro é um PWA — abre direto no navegador do celular. Você pode adicionar na tela inicial para ter a experiência de um app nativo, sem precisar de App Store.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Funciona no iPhone? <span>+</span></div>
+        <div class="faq-a">Sim, funciona no iPhone com Safari, incluindo o lançamento por voz. Foi especialmente otimizado para iOS.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Meus dados ficam seguros? <span>+</span></div>
+        <div class="faq-a">Seus dados ficam na sua sala privada no Firebase, protegida pelo código da sala que só você e seu(a) parceiro(a) têm. Nenhum dado pessoal como CPF é necessário.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Posso usar sozinho, sem parceiro(a)? <span>+</span></div>
+        <div class="faq-a">Sim! O app tem modo Solo para quem quer controle individual. Todas as funcionalidades funcionam normalmente.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="cta-final">
+  <h2 style="position:relative;">Comece hoje,<br><em>de graça</em></h2>
+  <p style="position:relative;">Experimente sem compromisso. Quando quiser desbloquear tudo, é uma única vez.</p>
+  <div style="position:relative;">
+    <a href="https://dindin-pro.vercel.app" class="btn-primary" style="font-size:18px;padding:20px 48px;">
+      Abrir DinDin Pro →
+    </a>
+    <div style="margin-top:16px;font-size:13px;color:var(--text3);">✓ Sem cadastro &nbsp;·&nbsp; ✓ Sem CPF &nbsp;·&nbsp; ✓ Funciona agora</div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div style="font-weight:700;font-size:16px;margin-bottom:8px;">DinDin <span style="color:var(--green);">Pro</span></div>
+  <div>Controle financeiro para casais · dindin-pro.vercel.app</div>
+  <div style="margin-top:8px;font-size:11px;">Feito com 💚 no Brasil</div>
+</footer>
+
+<!-- STICKY CTA mobile -->
+<div class="sticky-cta">
+  <button class="sticky-cta-btn" onclick="window.open('https://dindin-pro.vercel.app','_blank')">
+    Abrir DinDin Pro gratuitamente →
+  </button>
+</div>
+
+</body>
+</html>
