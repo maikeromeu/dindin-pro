@@ -446,6 +446,23 @@ body{font-family:var(--f);background:#0d1117 !important;color:var(--text);}
           <div class="stat-box"><div class="stat-lbl">⚡ A pagar</div><div class="stat-val pend" id="stat-apagar">R$0</div></div>
         </div>
       </div>
+      <div id="card-limite-diario" style="display:none;border-radius:16px;padding:14px 16px;margin-bottom:12px;border:1px solid rgba(0,232,150,0.15);background:linear-gradient(135deg,rgba(0,232,150,0.06),rgba(0,232,150,0.02));">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">💡 Limite do dia</div>
+            <div id="limite-valor" style="font-size:22px;font-weight:800;color:var(--green);font-family:var(--m);">R$0,00</div>
+            <div id="limite-desc" style="font-size:11px;color:var(--text2);margin-top:2px;">calculado automaticamente</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:10px;color:var(--text3);font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Gasto hoje</div>
+            <div id="gasto-hoje-val" style="font-size:22px;font-weight:800;font-family:var(--m);">R$0,00</div>
+            <div id="limite-status" style="font-size:11px;margin-top:2px;font-weight:700;">✓ No limite</div>
+          </div>
+        </div>
+        <div style="height:6px;background:rgba(255,255,255,0.07);border-radius:4px;overflow:hidden;margin-top:12px;">
+          <div id="limite-barra" style="height:100%;width:0%;border-radius:4px;transition:width .6s;"></div>
+        </div>
+      </div>
       <div class="card">
         <div class="card-head"><span class="card-title">💼 Salários</span><div style="display:flex;gap:8px;"><button class="btn-add" onclick="abrirEntrada()" style="color:var(--green);">+ Entrada</button><button class="btn-add" onclick="openModal('modal-salary')">Editar</button></div></div>
         <div id="salary-body"></div>
@@ -896,6 +913,7 @@ function renderInicio(){
   document.getElementById('stat-entradas').textContent='+'+fmtS(totalIn);
   document.getElementById('stat-saidas').textContent='-'+fmtS(totalOut);
   document.getElementById('stat-apagar').textContent=fmtS(fixasPend);
+  calcularLimiteDiario();
   renderSalary();renderDonut(g);renderGoalsHome();renderRecentTx(g);
 }
 function renderSalary(){
@@ -1620,6 +1638,69 @@ function renderDebtPlan() {
       </div>
     </div>`;
   }).join('');
+}
+
+// ═══════ LIMITE DIÁRIO ═══════
+function calcularLimiteDiario() {
+  const hoje = new Date();
+  const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
+  const diasRestantes = diasNoMes - hoje.getDate() + 1;
+
+  // Saldo atual
+  const g = gastosMes(state.currentMonth, state.currentYear);
+  const totalDiarios = g.reduce((s,x)=>s+Number(x.valor),0);
+  const entradasExtra = entradasMes(state.currentMonth, state.currentYear).reduce((s,e)=>s+Number(e.valor),0);
+  const totalIn = Number(state.salarios.p1||0) + Number(state.salarios.p2||0) + entradasExtra;
+  const fixasPagas = state.fixas.filter(f=>f.pago).reduce((s,f)=>s+Number(f.valor),0);
+  const saldo = totalIn - totalDiarios - fixasPagas;
+
+  // Parcelas de dívidas do mês
+  const parcelasDividas = (state.dividas||[]).reduce((s,d)=>s+Number(d.parcela||0),0);
+
+  // Valor livre após dívidas
+  const livreAposDividas = Math.max(0, saldo - parcelasDividas);
+
+  // Limite diário (máx R$200)
+  const LIMITE_MAX = 200;
+  const limiteDiario = Math.min(LIMITE_MAX, livreAposDividas / diasRestantes);
+
+  // Gasto de hoje
+  const hojeStr = hoje.toISOString().split('T')[0];
+  const gastoHoje = g.filter(x=>x.data===hojeStr).reduce((s,x)=>s+Number(x.valor),0);
+
+  // Atualizar UI
+  const cardEl = document.getElementById('card-limite-diario');
+  if(!cardEl) return;
+
+  if(limiteDiario <= 0 || totalIn <= 0) { cardEl.style.display='none'; return; }
+  cardEl.style.display='block';
+
+  document.getElementById('limite-valor').textContent = fmt(limiteDiario);
+  document.getElementById('gasto-hoje-val').textContent = fmt(gastoHoje);
+
+  const pct = Math.min(100, Math.round((gastoHoje/limiteDiario)*100));
+  const barra = document.getElementById('limite-barra');
+  const status = document.getElementById('limite-status');
+  const desc = document.getElementById('limite-desc');
+
+  // Cor da barra
+  let cor, statusTxt;
+  if(pct >= 100) { cor='var(--red)'; statusTxt='⚠️ Limite atingido!'; }
+  else if(pct >= 80) { cor='var(--yellow)'; statusTxt='🔶 Quase no limite'; }
+  else { cor='var(--green)'; statusTxt='✓ No limite'; }
+
+  barra.style.width = pct+'%';
+  barra.style.background = cor;
+  status.style.color = cor;
+  status.textContent = statusTxt;
+  desc.textContent = diasRestantes+' dias restantes · dívidas: '+fmt(parcelasDividas)+'/mês';
+
+  // Notificação quando bater o limite
+  if(pct >= 100) {
+    triggerNotification('⚠️ Limite diário atingido!', 'Você gastou '+fmt(gastoHoje)+' hoje. Limite: '+fmt(limiteDiario));
+  } else if(pct >= 80) {
+    triggerNotification('🔶 Quase no limite do dia', 'Já gastou '+fmt(gastoHoje)+' de '+fmt(limiteDiario)+' hoje');
+  }
 }
 
 // ═══════ BOOT ═══════
