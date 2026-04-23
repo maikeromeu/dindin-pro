@@ -504,7 +504,7 @@ body{font-family:var(--f);background:#0d1117 !important;color:var(--text);}
         <div class="cc-cards" id="cc-list"></div>
       </div>
       <div class="card hidden" id="extrato-card">
-        <div class="card-head"><span class="card-title" id="extrato-card-title">Extrato</span><button class="btn-text" onclick="closeExtrato()">← Voltar</button></div>
+        <div class="card-head"><span class="card-title" id="extrato-card-title">Extrato</span><div style="display:flex;gap:8px;align-items:center;"><button class="btn-text" id="btn-delete-cartao" onclick="deleteCartaoAtual()" style="color:var(--red);font-size:12px;font-weight:700;">🗑️ Excluir</button><button class="btn-text" onclick="closeExtrato()">← Voltar</button></div></div>
         <div class="extrato-wrap" id="extrato-body"></div>
       </div>
     </div>
@@ -1101,6 +1101,7 @@ function renderCartoes(){const el=document.getElementById('cc-list');if(!state.c
     </div>`;
   }).join('');}
 function openExtrato(ccId){const cc=state.cartoes.find(c=>c.id===ccId);if(!cc)return;
+  cartaoAbertoId = ccId;
   const dias=diasParaFechamento(cc);
   const vence=Number(cc.vence)||0;
   let subtitleHtml='';
@@ -1113,6 +1114,23 @@ function openExtrato(ccId){const cc=state.cartoes.find(c=>c.id===ccId);if(!cc)re
   document.getElementById('extrato-card').classList.remove('hidden');
   renderExtrato(ccId,cc);}
 function closeExtrato(){document.getElementById('cartoes-card').classList.remove('hidden');document.getElementById('extrato-card').classList.add('hidden');}
+let cartaoAbertoId = null;
+function deleteCartaoAtual(){
+  if(!cartaoAbertoId) return;
+  const cc = state.cartoes.find(c=>c.id===cartaoAbertoId);
+  if(!cc) return;
+  if(!confirm('Excluir o cartão "'+cc.nome+'" e todos os seus lançamentos?')) return;
+  // Remove cartão
+  state.cartoes = state.cartoes.filter(c=>c.id!==cartaoAbertoId);
+  // Remove gastos vinculados ao cartão
+  state.gastos = state.gastos.filter(g=>g.cartaoId!==cartaoAbertoId);
+  cartaoAbertoId = null;
+  closeExtrato();
+  save();
+  saveAndSync('del','Cartão excluído');
+  renderAll();
+  showToast('Cartão excluído ✓');
+}
 function renderExtrato(ccId,cc){
   const body=document.getElementById('extrato-body');
   const gs=state.gastos.filter(g=>g.cartaoId===ccId).sort((a,b)=>new Date(b.data)-new Date(a.data));
