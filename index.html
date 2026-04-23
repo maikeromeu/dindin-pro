@@ -463,6 +463,13 @@ body{font-family:var(--f);background:#0d1117 !important;color:var(--text);}
           <div id="limite-barra" style="height:100%;width:0%;border-radius:4px;transition:width .6s;"></div>
         </div>
       </div>
+      <div id="card-cc-home" style="display:none;border-radius:16px;padding:14px 16px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.08);background:var(--card);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <span style="font-size:12px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;">💳 Cartões</span>
+          <button onclick="switchTab('cartoes')" style="background:none;border:none;color:var(--green);font-size:12px;font-weight:700;cursor:pointer;">Ver todos →</button>
+        </div>
+        <div id="cc-home-list"></div>
+      </div>
       <div class="card">
         <div class="card-head"><span class="card-title">💼 Salários</span><div style="display:flex;gap:8px;"><button class="btn-add" onclick="abrirEntrada()" style="color:var(--green);">+ Entrada</button><button class="btn-add" onclick="openModal('modal-salary')">Editar</button></div></div>
         <div id="salary-body"></div>
@@ -690,8 +697,10 @@ body{font-family:var(--f);background:#0d1117 !important;color:var(--text);}
     <div class="modal-handle"></div>
     <div class="modal-title">💼 Salários</div>
     <div class="mfg"><label class="mfl" id="sal-lbl1">Seu salário (R$)</label><input class="mfi" id="sal-val1" type="number" step="0.01" placeholder="0,00"/></div>
+    <div class="mfg"><label class="mfl">Dia(s) de recebimento</label><input class="mfi" id="sal-dias1" placeholder="Ex: 2, 17 (separe por vírgula)"/></div>
     <div class="mfg" id="sal-p2-group"><label class="mfl">Nome do(a) parceiro(a)</label><input class="mfi" id="sal-nome2" placeholder="Ex: Larissa"/></div>
     <div class="mfg" id="sal-p2-val-group"><label class="mfl">Salário do(a) parceiro(a) (R$)</label><input class="mfi" id="sal-val2" type="number" step="0.01" placeholder="0,00"/></div>
+    <div class="mfg" id="sal-p2-dias-group"><label class="mfl">Dia de recebimento do(a) parceiro(a)</label><input class="mfi" id="sal-dias2" placeholder="Ex: 30"/></div>
     <div class="mf-footer">
       <button class="btn-cancel" onclick="closeModal('modal-salary')">Cancelar</button>
       <button class="btn-save" onclick="saveSalary()">✓ Salvar</button>
@@ -850,6 +859,7 @@ function initApp(){
   document.getElementById('sal-p2-group').style.display=state.user.modo==='casal'?'block':'none';
   document.getElementById('g-data').value=new Date().toISOString().split('T')[0];
   renderAll();
+  verificarRevisaoMensal();
 }
 function updateGreeting(){const h=new Date().getHours();const g=h<12?'Bom dia ☀️':h<18?'Boa tarde 🌤️':'Boa noite 🌙';document.getElementById('hdr-greeting').textContent=g;document.getElementById('hdr-name').textContent=state.user.nome||'—';}
 function updateAvatar(){const btn=document.getElementById('avatar-btn');if(state.user.foto){btn.innerHTML='<img src="'+state.user.foto+'"/>';}else{btn.textContent=(state.user.nome||'?')[0].toUpperCase();}document.getElementById('cfg-nome-lbl').textContent=state.user.nome||'—';document.getElementById('cfg-room-lbl').textContent=state.user.room||'—';}
@@ -898,7 +908,9 @@ function fmtDate(d){if(!d)return '—';const dt=new Date(d+'T12:00:00');return d
 function entradasMes(m,y){if(!state.entradas)return[];return state.entradas.filter(e=>{const d=new Date(e.data+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===y;});}
 function renderInicio(){
   const g=gastosMes(state.currentMonth,state.currentYear);
-  const totalDiarios=g.reduce((s,x)=>s+Number(x.valor),0);
+  // Crédito NÃO desconta do saldo — só débito/pix/dinheiro
+  const gastosReais=g.filter(x=>x.tipo!=='credito');
+  const totalDiarios=gastosReais.reduce((s,x)=>s+Number(x.valor),0);
   const entradasExtra=entradasMes(state.currentMonth,state.currentYear).reduce((s,e)=>s+Number(e.valor),0);
   const totalIn=Number(state.salarios.p1||0)+Number(state.salarios.p2||0)+entradasExtra;
   const fixasPagas=state.fixas.filter(f=>f.pago).reduce((s,f)=>s+Number(f.valor),0);
@@ -914,6 +926,7 @@ function renderInicio(){
   document.getElementById('stat-saidas').textContent='-'+fmtS(totalOut);
   document.getElementById('stat-apagar').textContent=fmtS(fixasPend);
   calcularLimiteDiario();
+  renderCCHome();
   renderSalary();renderDonut(g);renderGoalsHome();renderRecentTx(g);
 }
 function renderSalary(){
@@ -927,7 +940,14 @@ function renderSalary(){
   if(state.user.modo==='casal'&&p2>0){const p2nome=state.user.nomeP2||'Parceiro(a)';const p2ini=p2nome[0].toUpperCase();html+=`<div class="sal-item"><div class="sal-av" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">${p2ini}</div><div class="sal-name">${p2nome}</div><div class="sal-v">${fmt(p2)}</div></div>`;}
   if(!p1&&!p2&&!totExtra)html='<div class="tx-empty">Clique em Editar para configurar salários</div>';
   entradasExtra.forEach(e=>{html+=`<div class="sal-item"><div class="sal-av" style="background:linear-gradient(135deg,#16a34a,#15803d)">+</div><div class="sal-name">${e.desc}<span style="font-size:11px;color:#64748b;margin-left:6px;">${fmtDate(e.data)}</span></div><div style="display:flex;align-items:center;gap:8px;"><div class="sal-v">${fmt(e.valor)}</div><button onclick="deleteEntrada('${e.id}',event)" style="background:none;border:none;color:#4a5f70;font-size:16px;cursor:pointer;">×</button></div></div>`;});
-  if(p1||p2||totExtra)html+=`<div class="sal-total"><span class="sal-total-lbl">Total entradas</span><span class="sal-total-v">${fmt(tot)}</span></div>`;
+  if(p1||p2||totExtra){
+    const liquido=getSaldoLiquido();
+    html+=`<div class="sal-total"><span class="sal-total-lbl">Total entradas</span><span class="sal-total-v">${fmt(tot)}</span></div>`;
+    html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0 0;border-top:1px solid rgba(255,255,255,0.05);margin-top:6px;">
+      <span style="font-size:11px;color:var(--text3);">💡 Líquido (−fixas −dívidas)</span>
+      <span style="font-size:14px;font-weight:800;font-family:var(--m);color:${liquido>=0?'var(--green)':'var(--red)'};">${fmt(liquido)}</span>
+    </div>`;
+  }
   document.getElementById('salary-body').innerHTML=html;
 }
 function renderDonut(gs){
@@ -1187,7 +1207,18 @@ function renderExtrato(ccId,cc){
 function renderMetas(){const el=document.getElementById('metas-list');if(!state.metas.length){el.innerHTML='<div class="tx-empty">Nenhuma meta criada</div>';return;}el.innerHTML=state.metas.map(m=>{const pct=Math.min(100,Math.round((m.guardado/m.total)*100)||0);return`<div class="goal-item"><div class="goal-top"><div class="goal-left"><span class="goal-emoji">${m.emoji||'🎯'}</span><span class="goal-name">${m.nome}</span></div><span class="goal-pct">${pct}%</span></div><div class="goal-bar"><div class="goal-bar-fill" style="width:${pct}%"></div></div><div class="goal-bottom"><span>${fmt(m.guardado)} guardado</span><span>Meta: ${fmt(m.total)}</span></div></div>`;}).join('');}
 
 // MODALS
-function openModal(id){if(id==='modal-gasto'){updateCartaoSelect();document.getElementById('g-data').value=new Date().toISOString().split('T')[0];updateQuemSelect();}if(id==='modal-salary'){document.getElementById('sal-lbl1').textContent=(state.user.nome||'Você')+' (R$)';document.getElementById('sal-val1').value=state.salarios.p1||'';document.getElementById('sal-val2').value=state.salarios.p2||'';const n2el=document.getElementById('sal-nome2');if(n2el)n2el.value=state.user.nomeP2||'';const show=state.user.modo==='casal'?'block':'none';document.getElementById('sal-p2-group').style.display=show;const pg=document.getElementById('sal-p2-val-group');if(pg)pg.style.display=show;}document.getElementById(id).classList.add('open');}
+function openModal(id){if(id==='modal-gasto'){updateCartaoSelect();document.getElementById('g-data').value=new Date().toISOString().split('T')[0];updateQuemSelect();}if(id==='modal-salary'){
+  document.getElementById('sal-lbl1').textContent=(state.user.nome||'Você')+' (R$)';
+  document.getElementById('sal-val1').value=state.salarios.p1||'';
+  document.getElementById('sal-dias1').value=(state.salarios.dias1||[]).join(', ');
+  document.getElementById('sal-val2').value=state.salarios.p2||'';
+  const n2el=document.getElementById('sal-nome2');if(n2el)n2el.value=state.user.nomeP2||'';
+  document.getElementById('sal-dias2').value=(state.salarios.dias2||[]).join(', ');
+  const show=state.user.modo==='casal'?'block':'none';
+  document.getElementById('sal-p2-group').style.display=show;
+  const pg=document.getElementById('sal-p2-val-group');if(pg)pg.style.display=show;
+  const pd=document.getElementById('sal-p2-dias-group');if(pd)pd.style.display=show;
+}document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 function selectPay(btn){document.querySelectorAll('.pay-btn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');const isCred=btn.dataset.pay==='credito';document.getElementById('credito-options').classList.toggle('hidden',!isCred);if(isCred)updateInstallInfo();}
@@ -1225,7 +1256,19 @@ function deleteEntrada(id,e){
 }
 function saveGasto(){const desc=document.getElementById('g-desc').value.trim();const valor=parseFloat(document.getElementById('g-valor').value);const cat=document.getElementById('g-cat').value;const quem=document.getElementById('g-quem').value;const data=document.getElementById('g-data').value;const tipo=document.querySelector('.pay-btn.sel')?.dataset.pay||'debito';const cartaoId=tipo==='credito'?(document.getElementById('g-cartao').value||null):null;const parcelas=tipo==='credito'?parseInt(document.getElementById('g-parcelas').value)||1:1;if(!desc||!valor||!data){showToast('Preencha todos os campos');return;}if(parcelas>1){const grupoId='g'+Date.now();const pv=valor/parcelas;const base=new Date(data+'T12:00:00');for(let i=0;i<parcelas;i++){const d=new Date(base);d.setMonth(d.getMonth()+i);state.gastos.push({id:'g'+Date.now()+i,desc:`${desc} ${i+1}/${parcelas}`,valor:+pv.toFixed(2),cat,quem,data:d.toISOString().split('T')[0],tipo,cartaoId,parcelas,parcelaAtual:i+1,grupoId});}showToast(`${parcelas}x de ${fmt(valor/parcelas)} criadas ✓`);}else{state.gastos.push({id:'g'+Date.now(),desc,valor,cat,quem,data,tipo,cartaoId,parcelas:1,parcelaAtual:1,grupoId:null});showToast('Gasto salvo ✓');}document.getElementById('g-desc').value='';document.getElementById('g-valor').value='';document.getElementById('g-parcelas').value='1';document.getElementById('install-info').classList.add('hidden');closeModal('modal-gasto');save();renderAll();}
 function saveFixa(){const nome=document.getElementById('f-nome').value.trim();const valor=parseFloat(document.getElementById('f-valor').value);if(!nome||!valor){showToast('Preencha todos os campos');return;}const dia=document.getElementById('f-dia').value;const cat=document.getElementById('f-cat').value;state.fixas.push({id:'f'+Date.now(),nome,valor,dia,cat,pago:false});document.getElementById('f-nome').value='';document.getElementById('f-valor').value='';document.getElementById('f-dia').value='';closeModal('modal-fixa');save();renderFixas();renderInicio();showToast('Despesa fixa adicionada ✓');}
-function saveSalary(){state.salarios.p1=parseFloat(document.getElementById('sal-val1').value)||0;if(state.user.modo==='casal'){state.salarios.p2=parseFloat(document.getElementById('sal-val2').value)||0;const n2=document.getElementById('sal-nome2').value.trim();if(n2)state.user.nomeP2=n2;}closeModal('modal-salary');save();renderInicio();showToast('Salários salvos ✓');}
+function saveSalary(){
+  state.salarios.p1=parseFloat(document.getElementById('sal-val1').value)||0;
+  const dias1=document.getElementById('sal-dias1').value.trim();
+  state.salarios.dias1=dias1?dias1.split(',').map(d=>parseInt(d.trim())).filter(d=>d>0&&d<=31):[];
+  if(state.user.modo==='casal'){
+    state.salarios.p2=parseFloat(document.getElementById('sal-val2').value)||0;
+    const n2=document.getElementById('sal-nome2').value.trim();
+    if(n2)state.user.nomeP2=n2;
+    const dias2=document.getElementById('sal-dias2').value.trim();
+    state.salarios.dias2=dias2?dias2.split(',').map(d=>parseInt(d.trim())).filter(d=>d>0&&d<=31):[];
+  }
+  closeModal('modal-salary');save();renderInicio();showToast('Salários salvos ✓');
+}
 function saveCartao(){const nome=document.getElementById('cc-nome').value.trim();if(!nome){showToast('Digite o nome do cartão');return;}const bandeira=document.getElementById('cc-bandeira').value;const cor=document.getElementById('cc-cor').value;const limite=parseFloat(document.getElementById('cc-limite').value)||0;const fecha=parseInt(document.getElementById('cc-fecha').value)||1;const vence=parseInt(document.getElementById('cc-vence').value)||fecha+7;state.cartoes.push({id:'c'+Date.now(),nome,bandeira,cor,limite,fecha,vence});document.getElementById('cc-nome').value='';document.getElementById('cc-limite').value='';document.getElementById('cc-fecha').value='';document.getElementById('cc-vence').value='';closeModal('modal-cartao');save();renderCartoes();showToast('Cartão adicionado ✓');}
 function saveMeta(){const emoji=document.getElementById('m-emoji').value||'🎯';const nome=document.getElementById('m-nome').value.trim();const total=parseFloat(document.getElementById('m-total').value)||0;const guardado=parseFloat(document.getElementById('m-guardado').value)||0;if(!nome||!total){showToast('Preencha nome e valor');return;}state.metas.push({id:'m'+Date.now(),emoji,nome,total,guardado});document.getElementById('m-nome').value='';document.getElementById('m-total').value='';document.getElementById('m-guardado').value='';closeModal('modal-meta');save();renderMetas();renderGoalsHome();showToast('Meta criada ✓');}
 
@@ -1666,7 +1709,7 @@ function calcularLimiteDiario() {
 
   // Gasto de hoje
   const hojeStr = hoje.toISOString().split('T')[0];
-  const gastoHoje = g.filter(x=>x.data===hojeStr).reduce((s,x)=>s+Number(x.valor),0);
+  const gastoHoje = g.filter(x=>x.data===hojeStr&&x.tipo!=='credito').reduce((s,x)=>s+Number(x.valor),0);
 
   // Atualizar UI
   const cardEl = document.getElementById('card-limite-diario');
@@ -1703,6 +1746,150 @@ function calcularLimiteDiario() {
   }
 }
 
+// ═══════ CARTÕES NA HOME ═══════
+function renderCCHome() {
+  const cardEl = document.getElementById('card-cc-home');
+  const listEl = document.getElementById('cc-home-list');
+  if(!cardEl||!listEl) return;
+  const cartoes = state.cartoes||[];
+  if(!cartoes.length) { cardEl.style.display='none'; return; }
+  cardEl.style.display='block';
+
+  const hoje = new Date();
+  const m = state.currentMonth;
+  const y = state.currentYear;
+
+  listEl.innerHTML = cartoes.map(cc => {
+    // Calcular fatura atual
+    const fecha = cc.fecha||1;
+    const gastoCC = (state.gastos||[]).filter(g => {
+      if(g.cartaoId !== cc.id) return false;
+      const d = new Date(g.data+'T12:00:00');
+      // Período da fatura atual
+      const anoFecha = (hoje.getDate() >= fecha) ? hoje.getFullYear() : (hoje.getMonth()===0?hoje.getFullYear()-1:hoje.getFullYear());
+      const mesFecha = (hoje.getDate() >= fecha) ? hoje.getMonth() : (hoje.getMonth()===0?11:hoje.getMonth()-1);
+      const inicio = new Date(anoFecha, mesFecha, fecha);
+      const fim = new Date(inicio);
+      fim.setMonth(fim.getMonth()+1);
+      return d >= inicio && d < fim;
+    });
+    const fatura = gastoCC.reduce((s,g)=>s+Number(g.valor),0);
+    const pct = cc.limite > 0 ? Math.min(100, Math.round((fatura/cc.limite)*100)) : 0;
+    const diasVence = (() => {
+      const vence = cc.vence||1;
+      const v = new Date(hoje.getFullYear(), hoje.getMonth(), vence);
+      if(v < hoje) v.setMonth(v.getMonth()+1);
+      return Math.ceil((v-hoje)/(1000*60*60*24));
+    })();
+
+    return `<div onclick="switchTab('cartoes')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:10px;height:10px;border-radius:50%;background:${cc.cor};flex-shrink:0;"></div>
+        <div>
+          <div style="font-size:13px;font-weight:700;">${cc.nome}</div>
+          <div style="font-size:11px;color:var(--text3);">Vence em ${diasVence}d · ${pct}% usado</div>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:15px;font-weight:800;font-family:var(--m);color:${fatura>0?'var(--red)':'var(--text2)'};">${fmt(fatura)}</div>
+        <div style="font-size:10px;color:var(--text3);">fatura atual</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════ REVISÃO MENSAL ═══════
+function verificarRevisaoMensal() {
+  const hoje = new Date();
+  const mesAtual = hoje.getFullYear()+'-'+(hoje.getMonth()+1);
+  const ultimaRevisao = localStorage.getItem('dindin_revisao');
+  if(ultimaRevisao === mesAtual) return; // já revisou este mês
+  if(hoje.getDate() > 5) return; // só nos primeiros 5 dias do mês
+
+  // Montar conteúdo da revisão
+  const p1 = state.salarios.p1||0;
+  const p2 = state.salarios.p2||0;
+  const dias1 = (state.salarios.dias1||[]).join(', ')||'não informado';
+  const dias2 = (state.salarios.dias2||[]).join(', ')||'não informado';
+  const nomeP2 = state.user.nomeP2||'Parceiro(a)';
+  const parcelasDividas = (state.dividas||[]).reduce((s,d)=>s+Number(d.parcela||0),0);
+  const fixas = state.fixas||[];
+
+  let html = '';
+
+  // Salários
+  html += `<div style="background:var(--card2);border-radius:14px;padding:14px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.06);">
+    <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">💼 Salários</div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <span style="font-size:13px;">${state.user.nome||'Você'}</span>
+      <span style="font-weight:700;font-family:var(--m);">${fmt(p1)} · dia(s) ${dias1}</span>
+    </div>`;
+  if(state.user.modo==='casal') {
+    html += `<div style="display:flex;justify-content:space-between;">
+      <span style="font-size:13px;">${nomeP2}</span>
+      <span style="font-weight:700;font-family:var(--m);">${fmt(p2)} · dia ${dias2}</span>
+    </div>`;
+  }
+  html += `<button onclick="closeModal('modal-revisao');openModal('modal-salary')" style="background:none;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--green);font-size:12px;font-weight:600;padding:6px 12px;margin-top:10px;cursor:pointer;width:100%;">✏️ Atualizar salários</button>
+  </div>`;
+
+  // Fixas
+  if(fixas.length) {
+    html += `<div style="background:var(--card2);border-radius:14px;padding:14px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.06);">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">📋 Despesas fixas</div>`;
+    fixas.forEach(f => {
+      html += `<div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:13px;">${f.nome}</span>
+        <span style="font-weight:700;font-family:var(--m);color:var(--red);">-${fmt(f.valor)}</span>
+      </div>`;
+    });
+    html += `<button onclick="closeModal('modal-revisao');switchTab('fixas')" style="background:none;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--green);font-size:12px;font-weight:600;padding:6px 12px;margin-top:10px;cursor:pointer;width:100%;">✏️ Editar fixas</button>
+    </div>`;
+  }
+
+  // Dívidas
+  if(parcelasDividas > 0) {
+    html += `<div style="background:var(--card2);border-radius:14px;padding:14px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.06);">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">🧨 Parcelas de dívidas</div>
+      <div style="display:flex;justify-content:space-between;">
+        <span style="font-size:13px;">Total mensal</span>
+        <span style="font-weight:700;font-family:var(--m);color:var(--red);">-${fmt(parcelasDividas)}</span>
+      </div>
+      <button onclick="closeModal('modal-revisao');switchTab('dividas')" style="background:none;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--green);font-size:12px;font-weight:600;padding:6px 12px;margin-top:10px;cursor:pointer;width:100%;">✏️ Ver dívidas</button>
+    </div>`;
+  }
+
+  // Saldo líquido previsto
+  const totalSalarios = p1 + p2;
+  const totalFixas = fixas.reduce((s,f)=>s+Number(f.valor),0);
+  const liquido = totalSalarios - totalFixas - parcelasDividas;
+  html += `<div style="background:rgba(0,232,150,0.06);border-radius:14px;padding:14px;border:1px solid rgba(0,232,150,0.15);">
+    <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">💡 Saldo líquido previsto</div>
+    <div style="font-size:24px;font-weight:800;font-family:var(--m);color:${liquido>=0?'var(--green)':'var(--red)'};">${fmt(liquido)}</div>
+    <div style="font-size:11px;color:var(--text2);margin-top:4px;">Salários − Fixas − Parcelas</div>
+  </div>`;
+
+  document.getElementById('revisao-body').innerHTML = html;
+  setTimeout(()=>document.getElementById('modal-revisao').classList.add('open'), 1000);
+}
+
+function confirmarRevisao() {
+  const hoje = new Date();
+  const mesAtual = hoje.getFullYear()+'-'+(hoje.getMonth()+1);
+  localStorage.setItem('dindin_revisao', mesAtual);
+  closeModal('modal-revisao');
+  showToast('✓ Revisão concluída!');
+}
+
+// ═══════ SALDO LÍQUIDO NO CARD SALÁRIO ═══════
+function getSaldoLiquido() {
+  const p1 = Number(state.salarios.p1||0);
+  const p2 = Number(state.salarios.p2||0);
+  const totalFixas = (state.fixas||[]).reduce((s,f)=>s+Number(f.valor),0);
+  const parcelasDividas = (state.dividas||[]).reduce((s,d)=>s+Number(d.parcela||0),0);
+  return (p1+p2) - totalFixas - parcelasDividas;
+}
+
 // ═══════ BOOT ═══════
 load();
 if (state.user.nome) {
@@ -1715,5 +1902,18 @@ if (state.user.nome) {
   document.getElementById('setup-room').value = genRoom();
 }
 </script>
+<!-- MODAL REVISÃO MENSAL -->
+<div class="modal-overlay" id="modal-revisao">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📋 Revisão do mês</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">Início de mês! Confirme se as informações ainda estão corretas.</div>
+    <div id="revisao-body"></div>
+    <div class="mf-footer">
+      <button class="btn-save" onclick="confirmarRevisao()" style="width:100%">✓ Tudo certo, continuar</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
