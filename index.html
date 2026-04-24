@@ -309,6 +309,7 @@ body{font-family:var(--f);background:#0d1117 !important;color:var(--text);}
 .pay-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .pay-btn{height:50px;border-radius:var(--rs);background:var(--card);border:2px solid var(--border);color:var(--text2);font-family:var(--f);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;}
 .pay-btn.sel{border-color:var(--green);background:var(--gdim);color:var(--green);}
+.pay-fat-btn.sel{border-color:var(--green)!important;color:var(--green)!important;background:rgba(0,232,150,0.1)!important;}
 .mfrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .mf-footer{display:flex;gap:10px;margin-top:8px;}
 .btn-cancel{flex:1;height:50px;border-radius:var(--rs);background:var(--card);border:1.5px solid var(--border);color:var(--text2);font-family:var(--f);font-size:15px;cursor:pointer;}
@@ -909,8 +910,27 @@ function entradasMes(m,y){if(!state.entradas)return[];return state.entradas.filt
 function renderInicio(){
   const g=gastosMes(state.currentMonth,state.currentYear);
   // Crédito NÃO desconta do saldo — só débito/pix/dinheiro
-  const gastosReais=g.filter(x=>x.tipo!=='credito');
+  const gastosReais=g.filter(x=>!x.tipo||x.tipo==='debito'||x.tipo==='pix'||x.tipo==='dinheiro');
   const totalDiarios=gastosReais.reduce((s,x)=>s+Number(x.valor),0);
+  // Faturas de cartão pagas também descontam do saldo
+  const faturasPagas=(state.cartoes||[]).reduce((s,cc)=>{
+    const chave='fatura_paga_'+cc.id+'_'+getFaturaCicloKey(cc);
+    if(!localStorage.getItem(chave)) return s;
+    // Somar gastos da fatura fechada
+    const fecha=Number(cc.fecha)||1;
+    const hoje2=new Date();
+    const diaHoje2=hoje2.getDate();
+    let dataFecha;
+    if(diaHoje2>=fecha) dataFecha=new Date(hoje2.getFullYear(),hoje2.getMonth(),fecha);
+    else dataFecha=new Date(hoje2.getFullYear(),hoje2.getMonth()-1,fecha);
+    const inicioFat=new Date(dataFecha.getFullYear(),dataFecha.getMonth()-1,fecha+1);
+    const fimFat=new Date(dataFecha.getFullYear(),dataFecha.getMonth(),fecha);
+    const total=(state.gastos||[]).filter(g2=>g2.cartaoId===cc.id).filter(g2=>{
+      const d=new Date(g2.data+'T12:00:00');
+      return d>=inicioFat&&d<=fimFat;
+    }).reduce((ss,g2)=>ss+Number(g2.valor),0);
+    return s+total;
+  },0);
   const entradasExtra=entradasMes(state.currentMonth,state.currentYear).reduce((s,e)=>s+Number(e.valor),0);
   const totalIn=Number(state.salarios.p1||0)+Number(state.salarios.p2||0)+entradasExtra;
   const fixasPagas=state.fixas.filter(f=>f.pago).reduce((s,f)=>s+Number(f.valor),0);
@@ -1116,6 +1136,124 @@ function gastoFaturaAtual(cc){
     return d >= inicio && d <= fim;
   }).reduce((s,g)=>s+Number(g.valor),0);
 }
+
+function faturaEstaVencida(cc) {
+  // Fatura vencida = passou o dia de vencimento da fatura que fechou
+  // E ainda não foi marcada como paga
+  if(!cc.vence || !cc.fecha) return false;
+  const hoje = new Date();
+  const diaHoje = hoje.getDate();
+  const fecha = Number(cc.fecha);
+  const vence = Number(cc.vence);
+  
+  // Verificar se fatura está marcada como paga
+  const chavePaga = 'fatura_paga_'+cc.id+'_'+getFaturaCicloKey(cc);
+  if(localStorage.getItem(chavePaga)) return false;
+  
+  // Santander: fecha 13, vence 20
+  // Hoje 23/04: fechou dia 13/04, vencia dia 20/04 → VENCIDA
+  // Nubank: fecha 03, vence 10
+  // Hoje 23/04: fechou dia 03/04, vencia dia 10/04 → mas fatura atual abre 03/04
+  // A fatura mais recente que fechou e seu vencimento
+  
+  // Calcular data do último fechamento
+  let dataFecha;
+  if(diaHoje >= fecha) {
+    // Fechou este mês
+    dataFecha = new Date(hoje.getFullYear(), hoje.getMonth(), fecha);
+  } else {
+    // Fechou mês passado
+    dataFecha = new Date(hoje.getFullYear(), hoje.getMonth()-1, fecha);
+  }
+  
+  // Data de vencimento dessa fatura
+  let dataVenc;
+  if(vence > fecha) {
+    // Vence no mesmo mês que fechou
+    dataVenc = new Date(dataFecha.getFullYear(), dataFecha.getMonth(), vence);
+  } else {
+    // Vence no mês seguinte ao fechamento
+    dataVenc = new Date(dataFecha.getFullYear(), dataFecha.getMonth()+1, vence);
+  }
+  
+  // Só está vencida se a data de vencimento já passou
+  return dataVenc < hoje;
+}
+
+function getFaturaCicloKey(cc) {
+  // Retorna chave única para o ciclo atual da fatura fechada
+  const hoje = new Date();
+  const diaHoje = hoje.getDate();
+  const fecha = Number(cc.fecha);
+  let dataFecha;
+  if(diaHoje >= fecha) {
+    dataFecha = new Date(hoje.getFullYear(), hoje.getMonth(), fecha);
+  } else {
+    dataFecha = new Date(hoje.getFullYear(), hoje.getMonth()-1, fecha);
+  }
+  return dataFecha.getFullYear()+'-'+String(dataFecha.getMonth()+1).padStart(2,'0');
+}
+
+function abrirModalPagarFatura(ccId) {
+  const cc = state.cartoes.find(c=>c.id===ccId);
+  if(!cc) return;
+  // Calcular valor da fatura fechada
+  const fecha = Number(cc.fecha)||1;
+  const hoje2 = new Date();
+  const diaHoje2 = hoje2.getDate();
+  let dataFecha;
+  if(diaHoje2>=fecha) dataFecha=new Date(hoje2.getFullYear(),hoje2.getMonth(),fecha);
+  else dataFecha=new Date(hoje2.getFullYear(),hoje2.getMonth()-1,fecha);
+  const inicioFat=new Date(dataFecha.getFullYear(),dataFecha.getMonth()-1,fecha+1);
+  const fimFat=new Date(dataFecha.getFullYear(),dataFecha.getMonth(),fecha);
+  const valorFatura=(state.gastos||[]).filter(g=>g.cartaoId===ccId).filter(g=>{
+    const d=new Date(g.data+'T12:00:00');
+    return d>=inicioFat&&d<=fimFat;
+  }).reduce((s,g)=>s+Number(g.valor),0);
+  
+  // Mostrar modal de pagamento
+  document.getElementById('modal-pagar-fatura-nome').textContent = cc.nome;
+  document.getElementById('modal-pagar-fatura-valor').textContent = fmt(valorFatura);
+  document.getElementById('modal-pagar-fatura-id').value = ccId;
+  document.getElementById('modal-pagar-fatura-valor-real').value = valorFatura;
+  // Reset seleção
+  document.querySelectorAll('.pay-fat-btn').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('modal-pagar-fatura').classList.add('open');
+}
+
+function confirmarPagamentoFatura() {
+  const ccId = document.getElementById('modal-pagar-fatura-id').value;
+  const tipoPag = document.querySelector('.pay-fat-btn.sel')?.dataset.tipo;
+  const valorFatura = parseFloat(document.getElementById('modal-pagar-fatura-valor-real').value)||0;
+  if(!tipoPag) { showToast('Selecione a forma de pagamento'); return; }
+  const cc = state.cartoes.find(c=>c.id===ccId);
+  if(!cc) return;
+  
+  // Marcar fatura como paga
+  const chave = 'fatura_paga_'+ccId+'_'+getFaturaCicloKey(cc);
+  localStorage.setItem(chave, JSON.stringify({tipo:tipoPag, valor:valorFatura, data:new Date().toISOString()}));
+  
+  // Lançar pagamento como gasto real (débito/pix/dinheiro) para descontar do saldo
+  state.gastos.push({
+    id:'gpag'+Date.now(),
+    desc:'Fatura '+cc.nome,
+    valor: valorFatura,
+    cat:'outros',
+    quem: state.user.nome,
+    data: new Date().toISOString().split('T')[0],
+    tipo: tipoPag,
+    cartaoId: null,
+    parcelas:1,
+    parcelaAtual:1,
+    grupoId:null
+  });
+  
+  closeModal('modal-pagar-fatura');
+  save();
+  saveAndSync('add','Fatura '+cc.nome+' paga');
+  renderAll();
+  showToast('✅ Fatura '+cc.nome+' paga! Saldo atualizado.');
+}
 function renderCartoes(){
   // Limpar fixas que sejam faturas de cartão (lançadas manualmente)
   // Isso evita duplicidade
@@ -1132,18 +1270,7 @@ function renderCartoes(){
     const hoje2=new Date();
     // Verificar se tem fatura vencida (fechou mas não foi paga)
     const fecha2=Number(cc.fecha)||1;
-    const faturaVencida = (() => {
-      if(!vence) return false;
-      // Fatura que fechou no ciclo anterior
-      const diaAtual = hoje2.getDate();
-      // Se já passou do dia de fechamento, a fatura anterior pode estar vencida
-      const diaVence = Number(vence);
-      const mesAtual = hoje2.getMonth();
-      const anoAtual = hoje2.getFullYear();
-      const dataVenc = new Date(anoAtual, mesAtual, diaVence);
-      if(dataVenc < hoje2 && diaAtual > diaVence) return true;
-      return false;
-    })();
+    const faturaVencida = faturaEstaVencida(cc);
     // Status da fatura
     let statusTxt, statusColor;
     if(dias===0){statusTxt='⚠️ Fecha HOJE';statusColor='#ffd166';}
@@ -1168,10 +1295,7 @@ function openExtrato(ccId){const cc=state.cartoes.find(c=>c.id===ccId);if(!cc)re
   const dias=diasParaFechamento(cc);
   const vence=Number(cc.vence)||0;
   let subtitleHtml='';
-  const hoje3=new Date();
-  const diaVence3=Number(cc.vence)||0;
-  const dataVenc3=diaVence3?new Date(hoje3.getFullYear(),hoje3.getMonth(),diaVence3):null;
-  const fatVencida3=dataVenc3&&dataVenc3<hoje3&&hoje3.getDate()>diaVence3;
+  const fatVencida3 = faturaEstaVencida(cc);
   if(fatVencida3) subtitleHtml=`<div style="font-size:12px;font-weight:700;color:#ff4757;margin-top:2px;">🔴 FATURA VENCIDA! Venceu dia ${cc.vence}</div>`;
   else if(dias===0) subtitleHtml=`<div style="font-size:12px;font-weight:700;color:#ffd166;margin-top:2px;">⚠️ Fatura fecha HOJE!</div>`;
   else if(dias<=3) subtitleHtml=`<div style="font-size:12px;font-weight:700;color:#ffd166;margin-top:2px;">⚡ Fatura fecha em ${dias} dia(s)</div>`;
@@ -1812,29 +1936,30 @@ function renderCCHome() {
     });
     const fatura = gastoCC.reduce((s,g)=>s+Number(g.valor),0);
     const pct = cc.limite > 0 ? Math.min(100, Math.round((fatura/cc.limite)*100)) : 0;
-    const venceDia = Number(cc.vence)||1;
-    const venceDate = new Date(hoje.getFullYear(), hoje.getMonth(), venceDia);
-    const jaVenceu = venceDate < hoje && hoje.getDate() > venceDia;
+    const jaVenceu = faturaEstaVencida(cc);
     const diasVence = jaVenceu ? 0 : (() => {
       const v = new Date(hoje.getFullYear(), hoje.getMonth(), venceDia);
       if(v < hoje) v.setMonth(v.getMonth()+1);
       return Math.ceil((v-hoje)/(1000*60*60*24));
     })();
-    const statusLabel = jaVenceu ? '🔴 VENCIDA' : `Vence em ${diasVence}d`;
+    const statusLabel = jaVenceu ? '🔴 FATURA VENCIDA' : `Vence em ${diasVence}d`;
     const statusColor = jaVenceu ? '#ff4757' : 'var(--text3)';
 
-    return `<div onclick="switchTab('cartoes')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div style="width:10px;height:10px;border-radius:50%;background:${jaVenceu?'#ff4757':cc.cor};flex-shrink:0;"></div>
-        <div>
-          <div style="font-size:13px;font-weight:700;">${cc.nome}</div>
-          <div style="font-size:11px;color:${statusColor};font-weight:${jaVenceu?'700':'400'};">${statusLabel} · ${pct}% usado</div>
+    return `<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+      <div style="display:flex;justify-content:space-between;align-items:center;" onclick="switchTab('cartoes')">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:10px;height:10px;border-radius:50%;background:${jaVenceu?'#ff4757':cc.cor};flex-shrink:0;"></div>
+          <div>
+            <div style="font-size:13px;font-weight:700;">${cc.nome}</div>
+            <div style="font-size:11px;color:${statusColor};font-weight:${jaVenceu?'700':'400'};">${statusLabel}</div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:15px;font-weight:800;font-family:var(--m);color:${fatura>0?'var(--red)':'var(--text2)'};">${fmt(fatura)}</div>
+          <div style="font-size:10px;color:${jaVenceu?'#ff4757':'var(--text3)'};">${jaVenceu?'⚠️ pagar urgente':'fatura aberta'}</div>
         </div>
       </div>
-      <div style="text-align:right;">
-        <div style="font-size:15px;font-weight:800;font-family:var(--m);color:${fatura>0?'var(--red)':'var(--text2)'};">${fmt(fatura)}</div>
-        <div style="font-size:10px;color:${jaVenceu?'#ff4757':'var(--text3)'};">${jaVenceu?'⚠️ pagar urgente':'fatura atual'}</div>
-      </div>
+      ${jaVenceu?`<button onclick="abrirModalPagarFatura('${cc.id}')" style="margin-top:8px;width:100%;padding:8px;background:rgba(0,232,150,0.1);border:1px solid rgba(0,232,150,0.3);border-radius:10px;color:var(--green);font-size:13px;font-weight:700;cursor:pointer;">✅ Pagar fatura</button>`:''}
     </div>`;
   }).join('');
 }
@@ -1956,6 +2081,33 @@ if (state.user.nome) {
   document.getElementById('setup-room').value = genRoom();
 }
 </script>
+<!-- MODAL PAGAR FATURA -->
+<div class="modal-overlay" id="modal-pagar-fatura">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💳 Pagar fatura</div>
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:14px;color:var(--text2);margin-bottom:6px;" id="modal-pagar-fatura-nome">Cartão</div>
+      <div style="font-size:32px;font-weight:800;font-family:var(--m);color:var(--red);" id="modal-pagar-fatura-valor">R$0,00</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;">valor da fatura fechada</div>
+    </div>
+    <input type="hidden" id="modal-pagar-fatura-id"/>
+    <input type="hidden" id="modal-pagar-fatura-valor-real"/>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:12px;color:var(--text3);font-weight:600;margin-bottom:10px;letter-spacing:1px;text-transform:uppercase;">Como você pagou?</div>
+      <div style="display:flex;gap:8px;">
+        <button class="pay-fat-btn" data-tipo="debito" onclick="document.querySelectorAll('.pay-fat-btn').forEach(b=>b.classList.remove('sel'));this.classList.add('sel')" style="flex:1;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:var(--card2);color:var(--text1);font-size:13px;font-weight:600;cursor:pointer;">💳 Débito</button>
+        <button class="pay-fat-btn" data-tipo="pix" onclick="document.querySelectorAll('.pay-fat-btn').forEach(b=>b.classList.remove('sel'));this.classList.add('sel')" style="flex:1;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:var(--card2);color:var(--text1);font-size:13px;font-weight:600;cursor:pointer;">⚡ PIX</button>
+        <button class="pay-fat-btn" data-tipo="dinheiro" onclick="document.querySelectorAll('.pay-fat-btn').forEach(b=>b.classList.remove('sel'));this.classList.add('sel')" style="flex:1;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:var(--card2);color:var(--text1);font-size:13px;font-weight:600;cursor:pointer;">💵 Dinheiro</button>
+      </div>
+    </div>
+    <div class="mf-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-pagar-fatura')">Cancelar</button>
+      <button class="btn-save" onclick="confirmarPagamentoFatura()">✓ Confirmar pagamento</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL REVISÃO MENSAL -->
 <div class="modal-overlay" id="modal-revisao">
   <div class="modal-sheet">
