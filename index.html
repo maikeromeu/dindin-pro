@@ -1022,7 +1022,7 @@ function renderFixas(){
       <button class="tx-del" onclick="deleteFixa('${f.id}',event)" style="margin-left:4px;">×</button>
     </div>`).join('');
 }
-function deleteFixa(id,e){e.stopPropagation();const f=state.fixas.find(x=>x.id===id);state.fixas=state.fixas.filter(x=>x.id!==id);localStorage.setItem('dindinpro_v4',JSON.stringify(state));saveAndSync('fixa',f?f.nome:'');renderFixas();renderInicio();showToast('Despesa removida');}
+function deleteFixa(id,e){e.stopPropagation();const f=state.fixas.find(x=>x.id===id);if(!confirm('Remover "'+( f?f.nome:'esta despesa')+'"?'))return;state.fixas=state.fixas.filter(x=>x.id!==id);save();saveAndSync('del',f?f.nome:'');renderFixas();renderInicio();showToast('Despesa removida ✓');}
 function toggleFixa(id){
   const f=state.fixas.find(x=>x.id===id);
   if(!f) return;
@@ -1288,8 +1288,6 @@ function confirmarPagamentoFatura() {
   showToast('✅ Fatura '+cc.nome+' paga! Saldo atualizado.');
 }
 function renderCartoes(){
-  // Limpar fixas que sejam faturas de cartão (lançadas manualmente)
-  // Isso evita duplicidade
   const el=document.getElementById('cc-list');if(!state.cartoes.length){el.innerHTML='<div class="tx-empty">Nenhum cartão adicionado</div>';return;}
   const today=new Date();
   el.innerHTML=state.cartoes.map(cc=>{
