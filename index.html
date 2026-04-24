@@ -310,6 +310,7 @@ body{font-family:var(--f);background:#0d1117 !important;color:var(--text);}
 .pay-btn{height:50px;border-radius:var(--rs);background:var(--card);border:2px solid var(--border);color:var(--text2);font-family:var(--f);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;}
 .pay-btn.sel{border-color:var(--green);background:var(--gdim);color:var(--green);}
 .pay-fat-btn.sel{border-color:var(--green)!important;color:var(--green)!important;background:rgba(0,232,150,0.1)!important;}
+.pay-fixa-btn.sel{border-color:var(--green)!important;color:var(--green)!important;background:rgba(0,232,150,0.1)!important;}
 .mfrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .mf-footer{display:flex;gap:10px;margin-top:8px;}
 .btn-cancel{flex:1;height:50px;border-radius:var(--rs);background:var(--card);border:1.5px solid var(--border);color:var(--text2);font-family:var(--f);font-size:15px;cursor:pointer;}
@@ -935,7 +936,7 @@ function renderInicio(){
   const totalIn=Number(state.salarios.p1||0)+Number(state.salarios.p2||0)+entradasExtra;
   const fixasPagas=state.fixas.filter(f=>f.pago).reduce((s,f)=>s+Number(f.valor),0);
   const fixasPend=state.fixas.filter(f=>!f.pago).reduce((s,f)=>s+Number(f.valor),0);
-  const totalOut=totalDiarios+fixasPagas;
+  const totalOut=totalDiarios;
   const saldo=totalIn-totalOut;
   const el=document.getElementById('saldo-total');
   el.textContent=fmt(saldo);el.className='saldo-val '+(saldo>=0?'pos':'neg');
@@ -1041,7 +1042,58 @@ function renderFixas(){
     </div>`).join('');
 }
 function deleteFixa(id,e){e.stopPropagation();const f=state.fixas.find(x=>x.id===id);state.fixas=state.fixas.filter(x=>x.id!==id);localStorage.setItem('dindinpro_v4',JSON.stringify(state));saveAndSync('fixa',f?f.nome:'');renderFixas();renderInicio();showToast('Despesa removida');}
-function toggleFixa(id){const f=state.fixas.find(x=>x.id===id);if(f){f.pago=!f.pago;save();renderFixas();renderInicio();}}
+function toggleFixa(id){
+  const f=state.fixas.find(x=>x.id===id);
+  if(!f) return;
+  if(f.pago){
+    // Já paga — desmarcar
+    if(!confirm('Desmarcar "'+f.nome+'" como paga?')) return;
+    // Remover gasto de pagamento se existir
+    state.gastos = state.gastos.filter(g=>g.fixaId!==id);
+    f.pago=false;
+    save();renderFixas();renderInicio();
+  } else {
+    // Abrir modal de pagamento
+    abrirModalPagarFixa(id);
+  }
+}
+
+function abrirModalPagarFixa(id) {
+  const f = state.fixas.find(x=>x.id===id);
+  if(!f) return;
+  document.getElementById('modal-pagar-fixa-nome').textContent = f.nome;
+  document.getElementById('modal-pagar-fixa-valor').textContent = fmt(f.valor);
+  document.getElementById('modal-pagar-fixa-id').value = id;
+  document.querySelectorAll('.pay-fixa-btn').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('modal-pagar-fixa').classList.add('open');
+}
+
+function confirmarPagamentoFixa() {
+  const id = document.getElementById('modal-pagar-fixa-id').value;
+  const tipoPag = document.querySelector('.pay-fixa-btn.sel')?.dataset.tipo;
+  if(!tipoPag){ showToast('Selecione a forma de pagamento'); return; }
+  const f = state.fixas.find(x=>x.id===id);
+  if(!f) return;
+  f.pago = true;
+  // Lançar como gasto real para descontar do saldo
+  state.gastos.push({
+    id:'gfix'+Date.now(),
+    desc: f.nome,
+    valor: f.valor,
+    cat: f.cat||'outros',
+    quem: state.user.nome,
+    data: new Date().toISOString().split('T')[0],
+    tipo: tipoPag,
+    cartaoId: null,
+    fixaId: id,
+    parcelas:1, parcelaAtual:1, grupoId:null
+  });
+  closeModal('modal-pagar-fixa');
+  save();
+  saveAndSync('add', f.nome+' paga');
+  renderAll();
+  showToast('✅ '+f.nome+' paga! Saldo atualizado.');
+}
 
 // DIÁRIAS
 function renderDiarias(){renderBars();const g=gastosMes(state.currentMonth,state.currentYear);document.getElementById('tx-total-lbl').textContent=fmt(g.reduce((s,x)=>s+Number(x.valor),0));const el=document.getElementById('tx-list');const s=[...g].sort((a,b)=>new Date(b.data)-new Date(a.data));if(!s.length){el.innerHTML='<div class="tx-empty">Sem lançamentos este mês</div>';return;}el.innerHTML=s.map(txHTML).join('');}
@@ -1138,46 +1190,46 @@ function gastoFaturaAtual(cc){
 }
 
 function faturaEstaVencida(cc) {
-  // Fatura vencida = passou o dia de vencimento da fatura que fechou
-  // E ainda não foi marcada como paga
   if(!cc.vence || !cc.fecha) return false;
   const hoje = new Date();
   const diaHoje = hoje.getDate();
   const fecha = Number(cc.fecha);
   const vence = Number(cc.vence);
   
-  // Verificar se fatura está marcada como paga
-  const chavePaga = 'fatura_paga_'+cc.id+'_'+getFaturaCicloKey(cc);
-  if(localStorage.getItem(chavePaga)) return false;
-  
-  // Santander: fecha 13, vence 20
-  // Hoje 23/04: fechou dia 13/04, vencia dia 20/04 → VENCIDA
-  // Nubank: fecha 03, vence 10
-  // Hoje 23/04: fechou dia 03/04, vencia dia 10/04 → mas fatura atual abre 03/04
-  // A fatura mais recente que fechou e seu vencimento
-  
   // Calcular data do último fechamento
   let dataFecha;
   if(diaHoje >= fecha) {
-    // Fechou este mês
     dataFecha = new Date(hoje.getFullYear(), hoje.getMonth(), fecha);
   } else {
-    // Fechou mês passado
     dataFecha = new Date(hoje.getFullYear(), hoje.getMonth()-1, fecha);
   }
   
   // Data de vencimento dessa fatura
   let dataVenc;
   if(vence > fecha) {
-    // Vence no mesmo mês que fechou
     dataVenc = new Date(dataFecha.getFullYear(), dataFecha.getMonth(), vence);
   } else {
-    // Vence no mês seguinte ao fechamento
     dataVenc = new Date(dataFecha.getFullYear(), dataFecha.getMonth()+1, vence);
   }
   
-  // Só está vencida se a data de vencimento já passou
-  return dataVenc < hoje;
+  // Se vencimento ainda não passou, não está vencida
+  if(dataVenc >= hoje) return false;
+  
+  // Verificar se fatura está marcada como paga
+  const cicloKey = dataFecha.getFullYear()+'-'+String(dataFecha.getMonth()+1).padStart(2,'0');
+  const chavePaga = 'fatura_paga_'+cc.id+'_'+cicloKey;
+  if(localStorage.getItem(chavePaga)) return false;
+  
+  // Verificar se há gastos nesse ciclo — se não há gastos, não está vencida
+  const inicioFat = new Date(dataFecha.getFullYear(), dataFecha.getMonth()-1, fecha+1);
+  const fimFat = new Date(dataFecha.getFullYear(), dataFecha.getMonth(), fecha);
+  const gastosCiclo = (state.gastos||[]).filter(g => {
+    if(g.cartaoId !== cc.id) return false;
+    const d = new Date(g.data+'T12:00:00');
+    return d >= inicioFat && d <= fimFat;
+  });
+  
+  return gastosCiclo.length > 0;
 }
 
 function getFaturaCicloKey(cc) {
@@ -2081,6 +2133,31 @@ if (state.user.nome) {
   document.getElementById('setup-room').value = genRoom();
 }
 </script>
+<!-- MODAL PAGAR FIXA -->
+<div class="modal-overlay" id="modal-pagar-fixa">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📋 Pagar despesa fixa</div>
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:14px;color:var(--text2);margin-bottom:6px;" id="modal-pagar-fixa-nome"></div>
+      <div style="font-size:32px;font-weight:800;font-family:var(--m);color:var(--red);" id="modal-pagar-fixa-valor"></div>
+    </div>
+    <input type="hidden" id="modal-pagar-fixa-id"/>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:12px;color:var(--text3);font-weight:600;margin-bottom:10px;letter-spacing:1px;text-transform:uppercase;">Como você pagou?</div>
+      <div style="display:flex;gap:8px;">
+        <button class="pay-fixa-btn" data-tipo="debito" onclick="document.querySelectorAll('.pay-fixa-btn').forEach(b=>b.classList.remove('sel'));this.classList.add('sel')" style="flex:1;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:var(--card2);color:var(--text1);font-size:13px;font-weight:600;cursor:pointer;">💳 Débito</button>
+        <button class="pay-fixa-btn" data-tipo="pix" onclick="document.querySelectorAll('.pay-fixa-btn').forEach(b=>b.classList.remove('sel'));this.classList.add('sel')" style="flex:1;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:var(--card2);color:var(--text1);font-size:13px;font-weight:600;cursor:pointer;">⚡ PIX</button>
+        <button class="pay-fixa-btn" data-tipo="dinheiro" onclick="document.querySelectorAll('.pay-fixa-btn').forEach(b=>b.classList.remove('sel'));this.classList.add('sel')" style="flex:1;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:var(--card2);color:var(--text1);font-size:13px;font-weight:600;cursor:pointer;">💵 Dinheiro</button>
+      </div>
+    </div>
+    <div class="mf-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-pagar-fixa')">Cancelar</button>
+      <button class="btn-save" onclick="confirmarPagamentoFixa()">✓ Confirmar pagamento</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL PAGAR FATURA -->
 <div class="modal-overlay" id="modal-pagar-fatura">
   <div class="modal-sheet">
