@@ -797,6 +797,7 @@ body{font-family:var(--f);background:#0d1117 !important;color:var(--text);}
       <div class="mfg"><label class="mfl">Parcela mensal (R$)</label><input class="mfi" id="d-parcela" type="number" step="0.01" placeholder="0,00"/></div>
       <div class="mfg"><label class="mfl">Juros a.m. (%)</label><input class="mfi" id="d-juros" type="number" step="0.1" placeholder="0,0"/></div>
     </div>
+    <div class="mfg"><label class="mfl">Dia do vencimento</label><input class="mfi" id="d-dia" type="number" min="1" max="31" placeholder="Ex: 5, 10, 30"/></div>
     <input type="hidden" id="d-edit-id"/>
     <div class="mf-footer">
       <button class="btn-cancel" onclick="closeModal('modal-divida')">Cancelar</button>
@@ -892,10 +893,12 @@ function saveDivida(){
   if(!state.dividas)state.dividas=[];
   if(editId){
     const idx=state.dividas.findIndex(d=>d.id===editId);
-    if(idx>-1) state.dividas[idx]={...state.dividas[idx],nome,original:total,saldo,parcela,juros};
+    const diaEdit=parseInt(document.getElementById('d-dia').value)||0;
+    if(idx>-1) state.dividas[idx]={...state.dividas[idx],nome,original:total,saldo,parcela,juros,dia:diaEdit};
     showToast('Dívida atualizada ✓');
   } else {
-    state.dividas.push({id:'d'+Date.now(),nome,original:total,saldo,parcela,juros});
+    const dia=parseInt(document.getElementById('d-dia').value)||0;
+  state.dividas.push({id:'d'+Date.now(),nome,original:total,saldo,parcela,juros,dia});
     showToast('Dívida adicionada ✓');
   }
   document.getElementById('d-nome').value='';
@@ -903,6 +906,7 @@ function saveDivida(){
   document.getElementById('d-saldo').value='';
   document.getElementById('d-parcela').value='';
   document.getElementById('d-juros').value='';
+  document.getElementById('d-dia').value='';
   document.getElementById('d-edit-id').value='';
   document.getElementById('modal-title-divida').textContent='🧨 Cadastrar Dívida';
   closeModal('modal-divida');save();renderDebtPlan();
@@ -915,6 +919,7 @@ function editDivida(id){
   document.getElementById('d-saldo').value=d.saldo;
   document.getElementById('d-parcela').value=d.parcela;
   document.getElementById('d-juros').value=d.juros||'';
+  document.getElementById('d-dia').value=d.dia||'';
   document.getElementById('d-edit-id').value=d.id;
   document.getElementById('modal-title-divida').textContent='✏️ Editar Dívida';
   openModal('modal-divida');
@@ -1664,19 +1669,44 @@ async function requestNotificationPermission() {
   }
 }
 function checkFixasVencendo() {
-  if (!state.fixas || !state.fixas.length) return;
   const hoje = new Date().getDate();
-  state.fixas.filter(f=>!f.pago).forEach(f=>{
-    const diaFixa=Number(f.dia)||1;
-    const diff=diaFixa-hoje;
-    if(diff===0) triggerNotification('⚠️ Conta vence HOJE!', f.nome+' — '+fmt(f.valor));
-    else if(diff===1) triggerNotification('📅 Vence amanhã', f.nome+' — '+fmt(f.valor));
-    else if(diff===3) triggerNotification('🔔 Vence em 3 dias', f.nome+' — '+fmt(f.valor));
-  });
-  if(state.cartoes){
+  // Alertas de fixas
+  if (state.fixas && state.fixas.length) {
+    state.fixas.filter(f=>!f.pago).forEach(f=>{
+      const diaFixa=Number(f.dia)||1;
+      const diff=diaFixa-hoje;
+      if(diff===0) triggerNotification('⚠️ Conta vence HOJE!', f.nome+' — '+fmt(f.valor));
+      else if(diff===1) triggerNotification('📅 Vence amanhã', f.nome+' — '+fmt(f.valor));
+      else if(diff===3) triggerNotification('🔔 Vence em 3 dias', f.nome+' — '+fmt(f.valor));
+    });
+  }
+  // Alertas de dívidas
+  if (state.dividas && state.dividas.length) {
+    state.dividas.forEach(d=>{
+      if(!d.dia || Number(d.saldo)<=0) return;
+      const diff=Number(d.dia)-hoje;
+      if(diff===0) triggerNotification('🧨 Parcela vence HOJE!', d.nome+' — '+fmt(d.parcela));
+      else if(diff===1) triggerNotification('🧨 Parcela vence amanhã', d.nome+' — '+fmt(d.parcela));
+      else if(diff===3) triggerNotification('🧨 Parcela vence em 3 dias', d.nome+' — '+fmt(d.parcela));
+    });
+  }
+  // Alertas de cartões — vencimento da fatura
+  if (state.cartoes && state.cartoes.length) {
     state.cartoes.forEach(cc=>{
-      const dias=diasParaFechamento(cc);
-      if(dias===1){const g=gastoFaturaAtual(cc);triggerNotification('💳 Fatura fecha amanhã!',cc.nome+' — '+fmt(g)+' na fatura');}
+      // Alerta de fechamento
+      const diasFecha=diasParaFechamento(cc);
+      if(diasFecha===1){const g=gastoFaturaAtual(cc);triggerNotification('💳 Fatura fecha amanhã!',cc.nome+' — '+fmt(g)+' na fatura');}
+      else if(diasFecha===3){const g=gastoFaturaAtual(cc);if(g>0)triggerNotification('💳 Fatura fecha em 3 dias',cc.nome+' — '+fmt(g)+' na fatura');}
+      // Alerta de vencimento (pagamento)
+      if(cc.vence){
+        const diffVence=Number(cc.vence)-hoje;
+        const fatVal=gastoFaturaAtual(cc);
+        if(fatVal>0||isFaturaVencida(cc)){
+          if(diffVence===0) triggerNotification('💳 Fatura vence HOJE!', cc.nome+' — pague agora!');
+          else if(diffVence===1) triggerNotification('💳 Fatura vence amanhã!', cc.nome+' — não esqueça!');
+          else if(diffVence===3) triggerNotification('💳 Fatura vence em 3 dias', cc.nome);
+        }
+      }
     });
   }
 }
@@ -1891,7 +1921,7 @@ function renderDebtPlan() {
             <span style="font-size:15px;font-weight:700;">${d.nome}</span>
             ${isFirst ? '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(61,214,140,.15);color:var(--green);">🎯 FOCO</span>' : ''}
           </div>
-          <div style="font-size:12px;color:#64748b;margin-top:3px;">${fmt(d.parcela)}/mês${d.juros ? ' · ' + d.juros + '% a.m.' : ''}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:3px;">${fmt(d.parcela)}/mês${d.juros ? ' · ' + d.juros + '% a.m.' : ''}${d.dia ? ' · vence dia ' + d.dia : ''}</div>
         </div>
         <div style="text-align:right;flex-shrink:0;">
           <div style="font-size:16px;font-weight:800;color:var(--red);">${fmt(d.saldo)}</div>
