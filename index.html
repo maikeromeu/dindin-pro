@@ -941,6 +941,50 @@ function deleteDivida(id){
   state.dividas=state.dividas.filter(x=>x.id!==id);
   save();renderDebtPlan();renderInicio();showToast('Dívida removida ✓');
 }
+function abrirPagarDivida(id){
+  const d=state.dividas.find(x=>x.id===id);
+  if(!d) return;
+  document.getElementById('modal-pagar-divida-nome').textContent=d.nome;
+  document.getElementById('modal-pagar-divida-valor').textContent=fmt(d.parcela);
+  document.getElementById('modal-pagar-divida-id').value=id;
+  // parcelas info
+  const totalParc=d.original&&d.parcela?Math.round(Number(d.original)/Number(d.parcela)):0;
+  const parcPagas=d.original&&d.parcela?Math.round((Number(d.original)-Number(d.saldo))/Number(d.parcela)):0;
+  document.getElementById('modal-pagar-divida-info').textContent=totalParc>0?(parcPagas+' de '+totalParc+' parcelas pagas'):'';
+  document.querySelectorAll('.pay-div-btn').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('modal-pagar-divida').classList.add('open');
+}
+function confirmarPagamentoDivida(){
+  const id=document.getElementById('modal-pagar-divida-id').value;
+  const tipo=document.querySelector('.pay-div-btn.sel')?.dataset.tipo;
+  if(!tipo){showToast('Selecione a forma de pagamento');return;}
+  const d=state.dividas.find(x=>x.id===id);
+  if(!d) return;
+  const novoSaldo=Math.max(0, Number(d.saldo)-Number(d.parcela));
+  d.saldo=novoSaldo;
+  // Lança gasto real para descontar do saldo
+  state.gastos.push({
+    id:'gdiv'+Date.now(),
+    desc:'Parcela '+d.nome,
+    valor:Number(d.parcela),
+    cat:'💳 Dívidas',
+    quem:state.user.nome,
+    data:new Date().toISOString().split('T')[0],
+    tipo:tipo,
+    cartaoId:null,
+    fixaId:null,
+    parcelas:1,parcelaAtual:1,grupoId:null
+  });
+  closeModal('modal-pagar-divida');
+  save();saveAndSync('add','Parcela '+d.nome+' paga');
+  renderAll();
+  if(novoSaldo<=0){
+    showToast('🎉 '+d.nome+' quitada! Parabéns!');
+  } else {
+    const restantes=Math.ceil(novoSaldo/Number(d.parcela));
+    showToast('✅ Parcela paga! Faltam '+restantes+(restantes===1?' mês':' meses'));
+  }
+}
 function renderAll(){renderInicio();renderFixas();renderDiarias();renderCartoes();renderMetas();}
 
 // HELPERS
@@ -1951,8 +1995,9 @@ function renderDebtPlan() {
         <span>Faltam ${fmt(d.saldo)}</span>
       </div>
       <div style="display:flex;gap:8px;margin-top:10px;">
-        <button onclick="editDivida('${d.id}')" style="flex:1;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:var(--text1);font-size:12px;font-weight:600;cursor:pointer;">✏️ Editar</button>
-        <button onclick="deleteDivida('${d.id}')" style="flex:1;padding:8px;border-radius:10px;border:1px solid rgba(248,113,113,0.2);background:rgba(248,113,113,0.08);color:var(--red);font-size:12px;font-weight:600;cursor:pointer;">🗑️ Excluir</button>
+        <button onclick="abrirPagarDivida('${d.id}')" style="flex:1;padding:8px;border-radius:10px;border:1px solid rgba(0,232,150,0.3);background:rgba(0,232,150,0.08);color:var(--green);font-size:12px;font-weight:700;cursor:pointer;">💰 Pagar parcela</button>
+        <button onclick="editDivida('${d.id}')" style="padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:var(--text1);font-size:12px;font-weight:600;cursor:pointer;">✏️</button>
+        <button onclick="deleteDivida('${d.id}')" style="padding:8px 12px;border-radius:10px;border:1px solid rgba(248,113,113,0.2);background:rgba(248,113,113,0.08);color:var(--red);font-size:12px;font-weight:600;cursor:pointer;">🗑️</button>
       </div>
     </div>`;
   }).join('');
@@ -2231,6 +2276,32 @@ if (state.user.nome) {
     <div class="mf-footer">
       <button class="btn-cancel" onclick="closeModal('modal-pagar-fatura')">Cancelar</button>
       <button class="btn-save" onclick="confirmarPagamentoFatura()">✓ Confirmar pagamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PAGAR PARCELA DÍVIDA -->
+<div class="modal-overlay" id="modal-pagar-divida">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🧨 Pagar parcela</div>
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:14px;color:var(--text2);margin-bottom:6px;" id="modal-pagar-divida-nome"></div>
+      <div style="font-size:32px;font-weight:800;font-family:var(--m);color:var(--red);" id="modal-pagar-divida-valor">R$0,00</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;" id="modal-pagar-divida-info"></div>
+    </div>
+    <input type="hidden" id="modal-pagar-divida-id"/>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:12px;color:var(--text3);font-weight:600;margin-bottom:10px;letter-spacing:1px;text-transform:uppercase;">Como você pagou?</div>
+      <div style="display:flex;gap:8px;">
+        <button class="pay-div-btn" data-tipo="debito" onclick="document.querySelectorAll('.pay-div-btn').forEach(b=>b.classList.remove('sel'));this.classList.add('sel')" style="flex:1;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:var(--card2);color:var(--text1);font-size:13px;font-weight:600;cursor:pointer;">💳 Débito</button>
+        <button class="pay-div-btn" data-tipo="pix" onclick="document.querySelectorAll('.pay-div-btn').forEach(b=>b.classList.remove('sel'));this.classList.add('sel')" style="flex:1;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:var(--card2);color:var(--text1);font-size:13px;font-weight:600;cursor:pointer;">⚡ PIX</button>
+        <button class="pay-div-btn" data-tipo="dinheiro" onclick="document.querySelectorAll('.pay-div-btn').forEach(b=>b.classList.remove('sel'));this.classList.add('sel')" style="flex:1;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:var(--card2);color:var(--text1);font-size:13px;font-weight:600;cursor:pointer;">💵 Dinheiro</button>
+      </div>
+    </div>
+    <div class="mf-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-pagar-divida')">Cancelar</button>
+      <button class="btn-save" onclick="confirmarPagamentoDivida()">✓ Confirmar pagamento</button>
     </div>
   </div>
 </div>
