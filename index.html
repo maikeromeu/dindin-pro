@@ -580,6 +580,8 @@ body{font-family:var(--f);background:#0d1117 !important;color:var(--text);}
       <div class="card">
         <div class="card-head"><span class="card-title">Dados</span></div>
         <div class="si" onclick="exportData()"><div class="si-icon">📤</div><div class="si-info"><div class="si-title">Exportar dados</div><div class="si-desc">Backup em JSON</div></div><div class="si-right">›</div></div>
+        <div class="si" onclick="document.getElementById('import-file').click()"><div class="si-icon">📥</div><div class="si-info"><div class="si-title">Importar dados</div><div class="si-desc">Restaurar backup JSON</div></div><div class="si-right">›</div></div>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)"/>
         <div class="si" onclick="clearData()"><div class="si-icon">🗑️</div><div class="si-info"><div class="si-title">Apagar todos os dados</div><div class="si-desc">Reseta o app</div></div><div class="si-right" style="color:var(--red)">›</div></div>
         <div class="si" onclick="resetApp()"><div class="si-icon">🔄</div><div class="si-info"><div class="si-title">Trocar de conta</div><div class="si-desc">Sair e entrar em outra sala</div></div><div class="si-right">›</div></div>
       </div>
@@ -1563,6 +1565,28 @@ function handlePhotoChange(e){const f=e.target.files[0];if(!f)return;const r=new
 // UTILS
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 function exportData(){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='dindinpro-backup.json';a.click();showToast('Backup exportado ✓');}
+function importData(event){
+  const file=event.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.fixas&&!data.gastos){showToast('Arquivo inválido');return;}
+      if(!confirm('Substituir todos os dados atuais pelo backup?'))return;
+      // Preserva dados do usuário atual
+      const user=state.user;
+      Object.assign(state,data);
+      state.user=user;
+      save();
+      saveAndSync('import','backup restaurado');
+      renderAll();
+      showToast('✅ Dados restaurados com sucesso!');
+    }catch(err){showToast('Erro ao importar: arquivo inválido');}
+  };
+  reader.readAsText(file);
+  event.target.value='';
+}
 function clearData(){if(!confirm('Apagar TODOS os dados?'))return;state.gastos=[];state.fixas=[];state.cartoes=[];state.metas=[];state.salarios={p1:0,p2:0};save();renderAll();showToast('Dados apagados');}
 function resetApp(){if(!confirm('Sair da conta?'))return;localStorage.removeItem('dindinpro_v4');location.reload();}
 
