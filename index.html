@@ -879,7 +879,7 @@ function switchTab(tab){
   if(tab==='diarias'){state.selectedBar=null;renderDiarias();}
   if(tab==='dividas'){if(!state.dividas)state.dividas=[];renderDebtPlan();}
 }
-function deleteGasto(id,e){e.stopPropagation();const g=state.gastos.find(x=>x.id===id);state.gastos=state.gastos.filter(x=>x.id!==id);localStorage.setItem('dindinpro_v4',JSON.stringify(state));saveAndSync('del',g?g.desc:'');renderAll();showToast('Gasto removido');}
+function deleteGasto(id,e){e.stopPropagation();const g=state.gastos.find(x=>x.id===id);fbLastWrite=Date.now();state.gastos=state.gastos.filter(x=>x.id!==id);localStorage.setItem('dindinpro_v4',JSON.stringify(state));saveAndSync('del',g?g.desc:'');renderAll();showToast('Gasto removido');}
 function saveDivida(){
   const nome=document.getElementById('d-nome').value.trim();
   const total=parseFloat(document.getElementById('d-total').value)||0;
@@ -915,12 +915,15 @@ function renderInicio(){
   const totalDiarios=gastosReais.reduce((s,x)=>s+Number(x.valor),0);
   const entradasExtra=entradasMes(state.currentMonth,state.currentYear).reduce((s,e)=>s+Number(e.valor),0);
   const totalIn=Number(state.salarios.p1||0)+Number(state.salarios.p2||0)+entradasExtra;
-  // Fixas pagas que não têm gasto correspondente (pagas antes do novo sistema)
+  // Fixas pagas que não têm gasto correspondente NO MÊS ATUAL (pagas antes do novo sistema)
+  // Só conta se f.pago e não existe gasto com fixaId no mês visualizado (evita dupla contagem)
   const fixasPagasSemGasto=(state.fixas||[]).filter(f=>f.pago).reduce((s,f)=>{
-    const temGasto=gastosReais.some(g=>g.fixaId===f.id);
-    return temGasto?s:s+Number(f.valor);
+    const temGastoNoMes=gastosReais.some(g=>g.fixaId===f.id);
+    // Se já tem gasto lançado no mês, não soma (evita dupla contagem)
+    return temGastoNoMes?s:s+Number(f.valor);
   },0);
-  const fixasPend=state.fixas.filter(f=>!f.pago).reduce((s,f)=>s+Number(f.valor),0);
+  // fixasPend: fixas pendentes (não pagas) — apenas informativo para o card "a pagar"
+  const fixasPend=(state.fixas||[]).filter(f=>!f.pago).reduce((s,f)=>s+Number(f.valor),0);
   const totalOut=totalDiarios+fixasPagasSemGasto;
   const saldo=totalIn-totalOut;
   const el=document.getElementById('saldo-total');
@@ -1026,7 +1029,7 @@ function renderFixas(){
       <button class="tx-del" onclick="deleteFixa('${f.id}',event)" style="margin-left:4px;">×</button>
     </div>`).join('');
 }
-function deleteFixa(id,e){e.stopPropagation();const f=state.fixas.find(x=>x.id===id);if(!confirm('Remover "'+( f?f.nome:'esta despesa')+'"?'))return;state.fixas=state.fixas.filter(x=>x.id!==id);save();saveAndSync('del',f?f.nome:'');renderFixas();renderInicio();showToast('Despesa removida ✓');}
+function deleteFixa(id,e){e.stopPropagation();const f=state.fixas.find(x=>x.id===id);if(!confirm('Remover "'+( f?f.nome:'esta despesa')+'"?'))return;fbLastWrite=Date.now();state.fixas=state.fixas.filter(x=>x.id!==id);state.gastos=state.gastos.filter(g=>g.fixaId!==id);save();saveAndSync('del',f?f.nome:'');renderFixas();renderInicio();showToast('Despesa removida ✓');}
 function toggleFixa(id){
   const f=state.fixas.find(x=>x.id===id);
   if(!f) return;
@@ -1508,7 +1511,7 @@ async function initFirebase(entrouEmSalaExistente) {
           if(firstLoad && !entrouEmSalaExistente) fbPush(db);
           return;
         }
-        if (!firstLoad && Date.now() - fbLastWrite < 3000) return;
+        if (!firstLoad && Date.now() - fbLastWrite < 5000) return;
         const wasFirst = firstLoad;
         firstLoad = false;
         // Se era sala nova e não tinha dados, faz push
