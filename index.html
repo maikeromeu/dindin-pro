@@ -911,13 +911,17 @@ function entradasMes(m,y){if(!state.entradas)return[];return state.entradas.filt
 function renderInicio(){
   const g=gastosMes(state.currentMonth,state.currentYear);
   // Saldo real: só desconta gastos de débito/pix/dinheiro (crédito não desconta)
-  // Pagamentos de fixas e faturas são lançados como gastos reais, então já entram aqui
   const gastosReais=g.filter(x=>!x.tipo||x.tipo==='debito'||x.tipo==='pix'||x.tipo==='dinheiro');
   const totalDiarios=gastosReais.reduce((s,x)=>s+Number(x.valor),0);
   const entradasExtra=entradasMes(state.currentMonth,state.currentYear).reduce((s,e)=>s+Number(e.valor),0);
   const totalIn=Number(state.salarios.p1||0)+Number(state.salarios.p2||0)+entradasExtra;
+  // Fixas pagas que não têm gasto correspondente (pagas antes do novo sistema)
+  const fixasPagasSemGasto=(state.fixas||[]).filter(f=>f.pago).reduce((s,f)=>{
+    const temGasto=gastosReais.some(g=>g.fixaId===f.id);
+    return temGasto?s:s+Number(f.valor);
+  },0);
   const fixasPend=state.fixas.filter(f=>!f.pago).reduce((s,f)=>s+Number(f.valor),0);
-  const totalOut=totalDiarios;
+  const totalOut=totalDiarios+fixasPagasSemGasto;
   const saldo=totalIn-totalOut;
   const el=document.getElementById('saldo-total');
   el.textContent=fmt(saldo);el.className='saldo-val '+(saldo>=0?'pos':'neg');
