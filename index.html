@@ -2091,19 +2091,7 @@ function getSaldoLiquido() {
 
 // ═══════ BOOT ═══════
 load();
-// Remover fixa de fatura de cartão lançada manualmente
-(function limparFixasCartao(){
-  const antes = state.fixas.length;
-  state.fixas = state.fixas.filter(f => {
-    const nome = (f.nome||'').toLowerCase();
-    // Remove fixas que parecem ser faturas de cartão
-    return !(nome.includes('santander') || nome.includes('nubank') || nome.includes('credito') || nome.includes('crédito') || nome.includes('fatura') || nome.includes('venci'));
-  });
-  if(state.fixas.length !== antes){
-    save();
-    console.log('Fixas de cartão removidas automaticamente');
-  }
-})();
+// fixas protegidas
 if (state.user.nome) {
   document.getElementById('onboarding').classList.add('hidden');
   initApp();
