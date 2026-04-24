@@ -1877,10 +1877,13 @@ function renderDebtPlan() {
   const totalPago = totalOriginal - totalDivida;
   const totalPct = totalOriginal > 0 ? Math.min(100, Math.round((totalPago/totalOriginal)*100)) : 0;
   const totalParcela = dividas.reduce((s,d) => s + Number(d.parcela), 0);
+  // Calcula em paralelo — todas as dívidas são pagas simultaneamente
   let meses = 0, saldoSim = dividas.map(d => Number(d.saldo));
   while (saldoSim.some(s => s > 0) && meses < 360) {
     for (let i = 0; i < saldoSim.length; i++) {
-      if (saldoSim[i] > 0) { saldoSim[i] = Math.max(0, saldoSim[i] - Number(dividas[i].parcela) + (saldoSim[i] * (Number(dividas[i].juros||0)/100))); break; }
+      if (saldoSim[i] > 0) {
+        saldoSim[i] = Math.max(0, saldoSim[i] - Number(dividas[i].parcela) + (saldoSim[i] * (Number(dividas[i].juros||0)/100)));
+      }
     }
     meses++;
   }
