@@ -1629,13 +1629,27 @@ async function initFirebase(entrouEmSalaExistente) {
         if (!firstLoad && Date.now() - fbLastWrite < 5000) return;
         const wasFirst = firstLoad;
         firstLoad = false;
-        // Se era sala nova e não tinha dados, faz push
-        // NUNCA sobrescreve sala existente com dados vazios — proteção crítica
-        if (wasFirst && entrouEmSalaExistente && !data.gastos && !data.salarios) {
-          // Sala existente mas vazia — só faz push se o próprio state tem dados
-          if (state.gastos.length || state.fixas.length) fbPush(db);
-          return; // Não processa dados vazios
+
+        // PROTEÇÃO: nunca sobrescreve dados locais com Firebase vazio
+        const fbTemDados = data.fixas?.length || data.gastos?.length || data.salarios?.p1;
+        const localTemDados = state.fixas?.length || state.gastos?.length || state.salarios?.p1;
+
+        if (!fbTemDados && localTemDados) {
+          // Firebase vazio mas local tem dados — faz push pro Firebase
+          fbPush(db);
+          firstLoad = false;
+          return;
         }
+
+        // PROTEÇÃO: se Firebase tem menos fixas que local, não sobrescreve
+        const fbFixas = data.fixas?.length || 0;
+        const localFixas = state.fixas?.length || 0;
+        if (fbFixas < localFixas && !wasFirst) {
+          // Alguém deletou fixas no outro device — só aceita se foi recente
+          // (fbLastWrite proteção já cobre isso)
+          return;
+        }
+
         let changed = false;
 
         // Substitui listas COMPLETAS — garante deleção e atualização em tempo real
@@ -1643,10 +1657,7 @@ async function initFirebase(entrouEmSalaExistente) {
           state.gastos = data.gastos;
           changed = true;
         }
-        if (!data.gastos && state.gastos.length) {
-          state.gastos = [];
-          changed = true;
-        }
+        // NUNCA limpa gastos locais com Firebase vazio
         if (data.fixas && JSON.stringify(data.fixas) !== JSON.stringify(state.fixas)) {
           state.fixas = data.fixas;
           changed = true;
