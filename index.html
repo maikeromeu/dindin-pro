@@ -910,31 +910,12 @@ function fmtDate(d){if(!d)return '—';const dt=new Date(d+'T12:00:00');return d
 function entradasMes(m,y){if(!state.entradas)return[];return state.entradas.filter(e=>{const d=new Date(e.data+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===y;});}
 function renderInicio(){
   const g=gastosMes(state.currentMonth,state.currentYear);
-  // Crédito NÃO desconta do saldo — só débito/pix/dinheiro
+  // Saldo real: só desconta gastos de débito/pix/dinheiro (crédito não desconta)
+  // Pagamentos de fixas e faturas são lançados como gastos reais, então já entram aqui
   const gastosReais=g.filter(x=>!x.tipo||x.tipo==='debito'||x.tipo==='pix'||x.tipo==='dinheiro');
   const totalDiarios=gastosReais.reduce((s,x)=>s+Number(x.valor),0);
-  // Faturas de cartão pagas também descontam do saldo
-  const faturasPagas=(state.cartoes||[]).reduce((s,cc)=>{
-    const chave='fatura_paga_'+cc.id+'_'+getFaturaCicloKey(cc);
-    if(!localStorage.getItem(chave)) return s;
-    // Somar gastos da fatura fechada
-    const fecha=Number(cc.fecha)||1;
-    const hoje2=new Date();
-    const diaHoje2=hoje2.getDate();
-    let dataFecha;
-    if(diaHoje2>=fecha) dataFecha=new Date(hoje2.getFullYear(),hoje2.getMonth(),fecha);
-    else dataFecha=new Date(hoje2.getFullYear(),hoje2.getMonth()-1,fecha);
-    const inicioFat=new Date(dataFecha.getFullYear(),dataFecha.getMonth()-1,fecha+1);
-    const fimFat=new Date(dataFecha.getFullYear(),dataFecha.getMonth(),fecha);
-    const total=(state.gastos||[]).filter(g2=>g2.cartaoId===cc.id).filter(g2=>{
-      const d=new Date(g2.data+'T12:00:00');
-      return d>=inicioFat&&d<=fimFat;
-    }).reduce((ss,g2)=>ss+Number(g2.valor),0);
-    return s+total;
-  },0);
   const entradasExtra=entradasMes(state.currentMonth,state.currentYear).reduce((s,e)=>s+Number(e.valor),0);
   const totalIn=Number(state.salarios.p1||0)+Number(state.salarios.p2||0)+entradasExtra;
-  const fixasPagas=state.fixas.filter(f=>f.pago).reduce((s,f)=>s+Number(f.valor),0);
   const fixasPend=state.fixas.filter(f=>!f.pago).reduce((s,f)=>s+Number(f.valor),0);
   const totalOut=totalDiarios;
   const saldo=totalIn-totalOut;
