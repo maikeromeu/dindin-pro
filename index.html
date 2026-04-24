@@ -787,7 +787,7 @@ body{font-family:var(--f);background:#0d1117 !important;color:var(--text);}
 <div class="modal-overlay" id="modal-divida">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title">🧨 Cadastrar Dívida</div>
+    <div class="modal-title" id="modal-title-divida">🧨 Cadastrar Dívida</div>
     <div class="mfg"><label class="mfl">Nome da dívida</label><input class="mfi" id="d-nome" placeholder="Ex: Cartão Nubank, Empréstimo..."/></div>
     <div class="mfrow">
       <div class="mfg"><label class="mfl">Valor total (R$)</label><input class="mfi" id="d-total" type="number" step="0.01" placeholder="0,00"/></div>
@@ -797,6 +797,7 @@ body{font-family:var(--f);background:#0d1117 !important;color:var(--text);}
       <div class="mfg"><label class="mfl">Parcela mensal (R$)</label><input class="mfi" id="d-parcela" type="number" step="0.01" placeholder="0,00"/></div>
       <div class="mfg"><label class="mfl">Juros a.m. (%)</label><input class="mfi" id="d-juros" type="number" step="0.1" placeholder="0,0"/></div>
     </div>
+    <input type="hidden" id="d-edit-id"/>
     <div class="mf-footer">
       <button class="btn-cancel" onclick="closeModal('modal-divida')">Cancelar</button>
       <button class="btn-save" onclick="saveDivida()">✓ Salvar</button>
@@ -886,16 +887,43 @@ function saveDivida(){
   const saldo=parseFloat(document.getElementById('d-saldo').value)||total;
   const parcela=parseFloat(document.getElementById('d-parcela').value)||0;
   const juros=parseFloat(document.getElementById('d-juros').value)||0;
+  const editId=document.getElementById('d-edit-id').value;
   if(!nome||!total){showToast('Preencha nome e valor');return;}
   if(!state.dividas)state.dividas=[];
-  state.dividas.push({id:'d'+Date.now(),nome,original:total,saldo,parcela,juros});
+  if(editId){
+    const idx=state.dividas.findIndex(d=>d.id===editId);
+    if(idx>-1) state.dividas[idx]={...state.dividas[idx],nome,original:total,saldo,parcela,juros};
+    showToast('Dívida atualizada ✓');
+  } else {
+    state.dividas.push({id:'d'+Date.now(),nome,original:total,saldo,parcela,juros});
+    showToast('Dívida adicionada ✓');
+  }
   document.getElementById('d-nome').value='';
   document.getElementById('d-total').value='';
   document.getElementById('d-saldo').value='';
   document.getElementById('d-parcela').value='';
   document.getElementById('d-juros').value='';
+  document.getElementById('d-edit-id').value='';
+  document.getElementById('modal-title-divida').textContent='🧨 Cadastrar Dívida';
   closeModal('modal-divida');save();renderDebtPlan();
-  showToast('Dívida adicionada ✓');
+}
+function editDivida(id){
+  const d=state.dividas.find(x=>x.id===id);
+  if(!d) return;
+  document.getElementById('d-nome').value=d.nome;
+  document.getElementById('d-total').value=d.original||d.saldo;
+  document.getElementById('d-saldo').value=d.saldo;
+  document.getElementById('d-parcela').value=d.parcela;
+  document.getElementById('d-juros').value=d.juros||'';
+  document.getElementById('d-edit-id').value=d.id;
+  document.getElementById('modal-title-divida').textContent='✏️ Editar Dívida';
+  openModal('modal-divida');
+}
+function deleteDivida(id){
+  const d=state.dividas.find(x=>x.id===id);
+  if(!confirm('Excluir "'+( d?d.nome:'esta dívida')+'"?')) return;
+  state.dividas=state.dividas.filter(x=>x.id!==id);
+  save();renderDebtPlan();renderInicio();showToast('Dívida removida ✓');
 }
 function renderAll(){renderInicio();renderFixas();renderDiarias();renderCartoes();renderMetas();}
 
@@ -1877,6 +1905,10 @@ function renderDebtPlan() {
       <div style="display:flex;justify-content:space-between;font-size:11px;color:#64748b;">
         <span>${pct}% pago</span>
         <span>Faltam ${fmt(d.saldo)}</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button onclick="editDivida('${d.id}')" style="flex:1;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:var(--text1);font-size:12px;font-weight:600;cursor:pointer;">✏️ Editar</button>
+        <button onclick="deleteDivida('${d.id}')" style="flex:1;padding:8px;border-radius:10px;border:1px solid rgba(248,113,113,0.2);background:rgba(248,113,113,0.08);color:var(--red);font-size:12px;font-weight:600;cursor:pointer;">🗑️ Excluir</button>
       </div>
     </div>`;
   }).join('');
