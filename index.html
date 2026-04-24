@@ -546,7 +546,7 @@ body{font-family:var(--f);background:#0d1117 !important;color:var(--text);}
     <!-- DÍVIDAS -->
     <div class="tab-pane" id="pane-dividas">
       <div class="card">
-        <div class="card-head"><span class="card-title">🧨 Plano Sair das Dívidas</span><button class="btn-add" onclick="openModal('modal-divida')">＋ Adicionar</button></div>
+        <div class="card-head"><span class="card-title">🧨 Plano Sair das Dívidas</span><button class="btn-add" onclick="novaDivida()">＋ Adicionar</button></div>
         <div id="debt-summary"></div>
         <div style="padding:10px 14px;background:rgba(61,214,140,.06);border-bottom:1px solid rgba(255,255,255,.05)">
           <div style="font-size:12px;color:#64748b;font-weight:600;margin-bottom:4px">📌 MÉTODO BOLA DE NEVE</div>
@@ -910,6 +910,17 @@ function saveDivida(){
   document.getElementById('d-edit-id').value='';
   document.getElementById('modal-title-divida').textContent='🧨 Cadastrar Dívida';
   closeModal('modal-divida');save();renderDebtPlan();
+}
+function novaDivida(){
+  document.getElementById('d-nome').value='';
+  document.getElementById('d-total').value='';
+  document.getElementById('d-saldo').value='';
+  document.getElementById('d-parcela').value='';
+  document.getElementById('d-juros').value='';
+  document.getElementById('d-dia').value='';
+  document.getElementById('d-edit-id').value='';
+  document.getElementById('modal-title-divida').textContent='🧨 Cadastrar Dívida';
+  openModal('modal-divida');
 }
 function editDivida(id){
   const d=state.dividas.find(x=>x.id===id);
