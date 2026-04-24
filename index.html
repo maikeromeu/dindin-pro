@@ -1033,15 +1033,18 @@ function renderSalary(){
   const tot=p1+p2+totExtra;
   let html='';
   const foto=state.user.foto?'<img src="'+state.user.foto+'"/>':(state.user.nome||'?')[0].toUpperCase();
-  // Se é owner: mostra próprio nome em p1, nomeP2 em p2
-  // Se é parceiro(a): mostra nomeP1 (dono) em p1, próprio nome em p2
+  // Se é owner: p1=próprio, p2=parceiro(a)
+  // Se é parceiro(a): p1=dono (stored), p2=parceiro armazenado — mas exibe próprio nome em p2
   const isOwner = state.user.isOwner;
-  const nomeP1 = isOwner ? (state.user.nome||'Você') : (state.nomeP1||'Parceiro(a)');
-  const nomeP2 = isOwner ? (state.user.nomeP2||'Parceiro(a)') : (state.user.nome||'Você');
-  const fotoP2 = !isOwner ? foto : null;
-  const iniP2 = nomeP2[0].toUpperCase();
-  if(p1>0){const av1=isOwner?foto:iniP2;const av1style=isOwner?'':`style="background:linear-gradient(135deg,#7c3aed,#6d28d9)"`;html+=`<div class="sal-item"><div class="sal-av" ${av1style}>${av1}</div><div class="sal-name">${nomeP1}</div><div class="sal-v">${fmt(p1)}</div></div>`;}
-  if(state.user.modo==='casal'&&p2>0){const av2=!isOwner?foto:iniP2;const av2style=!isOwner?'':`style="background:linear-gradient(135deg,#7c3aed,#6d28d9)"`;html+=`<div class="sal-item"><div class="sal-av" ${av2style}>${av2}</div><div class="sal-name">${nomeP2}</div><div class="sal-v">${fmt(p2)}</div></div>`;}
+  // Nomes corretos conforme quem está logado
+  const meuNome = state.user.nome||'Você';
+  const nomeOutro = isOwner ? (state.user.nomeP2||'Parceiro(a)') : (state.nomeP1||'Parceiro(a)');
+  // Valores: owner usa p1 como seu; parceiro usa p2 como seu
+  const meuSal = isOwner ? p1 : p2;
+  const outroSal = isOwner ? p2 : p1;
+  const iniOutro = nomeOutro[0].toUpperCase();
+  if(meuSal>0){html+=`<div class="sal-item"><div class="sal-av">${foto}</div><div class="sal-name">${meuNome}</div><div class="sal-v">${fmt(meuSal)}</div></div>`;}
+  if(state.user.modo==='casal'&&outroSal>0){html+=`<div class="sal-item"><div class="sal-av" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">${iniOutro}</div><div class="sal-name">${nomeOutro}</div><div class="sal-v">${fmt(outroSal)}</div></div>`;}
   if(!p1&&!p2&&!totExtra)html='<div class="tx-empty">Clique em Editar para configurar salários</div>';
   entradasExtra.forEach(e=>{html+=`<div class="sal-item"><div class="sal-av" style="background:linear-gradient(135deg,#16a34a,#15803d)">+</div><div class="sal-name">${e.desc}<span style="font-size:11px;color:#64748b;margin-left:6px;">${fmtDate(e.data)}</span></div><div style="display:flex;align-items:center;gap:8px;"><div class="sal-v">${fmt(e.valor)}</div><button onclick="deleteEntrada('${e.id}',event)" style="background:none;border:none;color:#4a5f70;font-size:16px;cursor:pointer;">×</button></div></div>`;});
   if(p1||p2||totExtra){
@@ -2029,7 +2032,8 @@ function calcularLimiteDiario() {
 
   // Gasto de hoje
   const hojeStr = hoje.toISOString().split('T')[0];
-  const gastoHoje = g.filter(x=>x.data===hojeStr&&x.tipo!=='credito').reduce((s,x)=>s+Number(x.valor),0);
+  // Exclui pagamentos de fixas do gasto do dia (fixas não contam no limite diário)
+  const gastoHoje = g.filter(x=>x.data===hojeStr&&x.tipo!=='credito'&&!x.fixaId).reduce((s,x)=>s+Number(x.valor),0);
 
   // Atualizar UI
   const cardEl = document.getElementById('card-limite-diario');
