@@ -936,8 +936,15 @@ function renderSalary(){
   const tot=p1+p2+totExtra;
   let html='';
   const foto=state.user.foto?'<img src="'+state.user.foto+'"/>':(state.user.nome||'?')[0].toUpperCase();
-  if(p1>0)html+=`<div class="sal-item"><div class="sal-av">${foto}</div><div class="sal-name">${state.user.nome||'Você'}</div><div class="sal-v">${fmt(p1)}</div></div>`;
-  if(state.user.modo==='casal'&&p2>0){const p2nome=state.user.nomeP2||'Parceiro(a)';const p2ini=p2nome[0].toUpperCase();html+=`<div class="sal-item"><div class="sal-av" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">${p2ini}</div><div class="sal-name">${p2nome}</div><div class="sal-v">${fmt(p2)}</div></div>`;}
+  // Se é owner: mostra próprio nome em p1, nomeP2 em p2
+  // Se é parceiro(a): mostra nomeP1 (dono) em p1, próprio nome em p2
+  const isOwner = state.user.isOwner;
+  const nomeP1 = isOwner ? (state.user.nome||'Você') : (state.nomeP1||'Parceiro(a)');
+  const nomeP2 = isOwner ? (state.user.nomeP2||'Parceiro(a)') : (state.user.nome||'Você');
+  const fotoP2 = !isOwner ? foto : null;
+  const iniP2 = nomeP2[0].toUpperCase();
+  if(p1>0){const av1=isOwner?foto:iniP2;const av1style=isOwner?'':`style="background:linear-gradient(135deg,#7c3aed,#6d28d9)"`;html+=`<div class="sal-item"><div class="sal-av" ${av1style}>${av1}</div><div class="sal-name">${nomeP1}</div><div class="sal-v">${fmt(p1)}</div></div>`;}
+  if(state.user.modo==='casal'&&p2>0){const av2=!isOwner?foto:iniP2;const av2style=!isOwner?'':`style="background:linear-gradient(135deg,#7c3aed,#6d28d9)"`;html+=`<div class="sal-item"><div class="sal-av" ${av2style}>${av2}</div><div class="sal-name">${nomeP2}</div><div class="sal-v">${fmt(p2)}</div></div>`;}
   if(!p1&&!p2&&!totExtra)html='<div class="tx-empty">Clique em Editar para configurar salários</div>';
   entradasExtra.forEach(e=>{html+=`<div class="sal-item"><div class="sal-av" style="background:linear-gradient(135deg,#16a34a,#15803d)">+</div><div class="sal-name">${e.desc}<span style="font-size:11px;color:#64748b;margin-left:6px;">${fmtDate(e.data)}</span></div><div style="display:flex;align-items:center;gap:8px;"><div class="sal-v">${fmt(e.valor)}</div><button onclick="deleteEntrada('${e.id}',event)" style="background:none;border:none;color:#4a5f70;font-size:16px;cursor:pointer;">×</button></div></div>`;});
   if(p1||p2||totExtra){
@@ -1109,7 +1116,10 @@ function gastoFaturaAtual(cc){
     return d >= inicio && d <= fim;
   }).reduce((s,g)=>s+Number(g.valor),0);
 }
-function renderCartoes(){const el=document.getElementById('cc-list');if(!state.cartoes.length){el.innerHTML='<div class="tx-empty">Nenhum cartão adicionado</div>';return;}
+function renderCartoes(){
+  // Limpar fixas que sejam faturas de cartão (lançadas manualmente)
+  // Isso evita duplicidade
+  const el=document.getElementById('cc-list');if(!state.cartoes.length){el.innerHTML='<div class="tx-empty">Nenhum cartão adicionado</div>';return;}
   const today=new Date();
   el.innerHTML=state.cartoes.map(cc=>{
     const gastoAtual=gastoFaturaAtual(cc);
@@ -1119,6 +1129,21 @@ function renderCartoes(){const el=document.getElementById('cc-list');if(!state.c
     const flag={'Visa':'💳','Mastercard':'🔴','Elo':'💙','Amex':'💚'}[cc.bandeira]||'💳';
     const dias=diasParaFechamento(cc);
     const vence=Number(cc.vence)||0;
+    const hoje2=new Date();
+    // Verificar se tem fatura vencida (fechou mas não foi paga)
+    const fecha2=Number(cc.fecha)||1;
+    const faturaVencida = (() => {
+      if(!vence) return false;
+      // Fatura que fechou no ciclo anterior
+      const diaAtual = hoje2.getDate();
+      // Se já passou do dia de fechamento, a fatura anterior pode estar vencida
+      const diaVence = Number(vence);
+      const mesAtual = hoje2.getMonth();
+      const anoAtual = hoje2.getFullYear();
+      const dataVenc = new Date(anoAtual, mesAtual, diaVence);
+      if(dataVenc < hoje2 && diaAtual > diaVence) return true;
+      return false;
+    })();
     // Status da fatura
     let statusTxt, statusColor;
     if(dias===0){statusTxt='⚠️ Fecha HOJE';statusColor='#ffd166';}
@@ -1126,7 +1151,7 @@ function renderCartoes(){const el=document.getElementById('cc-list');if(!state.c
     else{statusTxt=`Fecha em ${dias} dias`;statusColor='rgba(255,255,255,0.5)';}
     // Barra de uso do limite
     const barColor = pct>=90?'#ff4d6d':pct>=70?'#ffd166':'var(--green)';
-    return`<div class="cc-visual" style="background:linear-gradient(135deg,${cc.cor},${cc.cor}cc)" onclick="openExtrato('${cc.id}')">
+    return`<div class="cc-visual" style="background:linear-gradient(135deg,${cc.cor},${cc.cor}cc);${faturaVencida?'border:2px solid #ff4757;':''}" onclick="openExtrato('${cc.id}')">
       <div class="cc-top"><span class="cc-name">${cc.nome}</span><span class="cc-flag">${flag}</span></div>
       <div class="cc-used-lbl">Fatura atual</div>
       <div class="cc-value">${fmt(gastoAtual)}</div>
@@ -1143,7 +1168,12 @@ function openExtrato(ccId){const cc=state.cartoes.find(c=>c.id===ccId);if(!cc)re
   const dias=diasParaFechamento(cc);
   const vence=Number(cc.vence)||0;
   let subtitleHtml='';
-  if(dias===0) subtitleHtml=`<div style="font-size:12px;font-weight:700;color:#ffd166;margin-top:2px;">⚠️ Fatura fecha HOJE!</div>`;
+  const hoje3=new Date();
+  const diaVence3=Number(cc.vence)||0;
+  const dataVenc3=diaVence3?new Date(hoje3.getFullYear(),hoje3.getMonth(),diaVence3):null;
+  const fatVencida3=dataVenc3&&dataVenc3<hoje3&&hoje3.getDate()>diaVence3;
+  if(fatVencida3) subtitleHtml=`<div style="font-size:12px;font-weight:700;color:#ff4757;margin-top:2px;">🔴 FATURA VENCIDA! Venceu dia ${cc.vence}</div>`;
+  else if(dias===0) subtitleHtml=`<div style="font-size:12px;font-weight:700;color:#ffd166;margin-top:2px;">⚠️ Fatura fecha HOJE!</div>`;
   else if(dias<=3) subtitleHtml=`<div style="font-size:12px;font-weight:700;color:#ffd166;margin-top:2px;">⚡ Fatura fecha em ${dias} dia(s)</div>`;
   else subtitleHtml=`<div style="font-size:11px;color:#7a95ab;margin-top:2px;">Fecha dia ${cc.fecha}${vence?' · Vence dia '+vence:''}</div>`;
   const titleEl=document.getElementById('extrato-card-title');
@@ -1360,9 +1390,14 @@ async function initFirebase(entrouEmSalaExistente) {
           state.entradas = data.entradas;
           changed = true;
         }
-        // Sincroniza nome do parceiro(a)
+        // Sincroniza nomes
         if (data.nomeP2 && data.nomeP2 !== state.user.nomeP2) {
           state.user.nomeP2 = data.nomeP2;
+          changed = true;
+        }
+        // Se não é owner, usa nomeP1 como nome do dono da sala
+        if (!state.user.isOwner && data.nomeP1 && data.nomeP1 !== state.nomeP1) {
+          state.nomeP1 = data.nomeP1;
           changed = true;
         }
         if (changed) {
@@ -1393,6 +1428,8 @@ function fbPush(db, action, desc) {
     cartoes: state.cartoes,
     metas: state.metas,
     salarios: state.salarios,
+    dividas: state.dividas||[],
+    nomeP1: state.user.isOwner ? (state.user.nome||'') : (state.nomeP1||''),
     nomeP2: state.user.nomeP2 || '',
     lastUser: state.user.nome,
     lastAction: action || 'add',
@@ -1775,24 +1812,28 @@ function renderCCHome() {
     });
     const fatura = gastoCC.reduce((s,g)=>s+Number(g.valor),0);
     const pct = cc.limite > 0 ? Math.min(100, Math.round((fatura/cc.limite)*100)) : 0;
-    const diasVence = (() => {
-      const vence = cc.vence||1;
-      const v = new Date(hoje.getFullYear(), hoje.getMonth(), vence);
+    const venceDia = Number(cc.vence)||1;
+    const venceDate = new Date(hoje.getFullYear(), hoje.getMonth(), venceDia);
+    const jaVenceu = venceDate < hoje && hoje.getDate() > venceDia;
+    const diasVence = jaVenceu ? 0 : (() => {
+      const v = new Date(hoje.getFullYear(), hoje.getMonth(), venceDia);
       if(v < hoje) v.setMonth(v.getMonth()+1);
       return Math.ceil((v-hoje)/(1000*60*60*24));
     })();
+    const statusLabel = jaVenceu ? '🔴 VENCIDA' : `Vence em ${diasVence}d`;
+    const statusColor = jaVenceu ? '#ff4757' : 'var(--text3)';
 
     return `<div onclick="switchTab('cartoes')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;">
       <div style="display:flex;align-items:center;gap:10px;">
-        <div style="width:10px;height:10px;border-radius:50%;background:${cc.cor};flex-shrink:0;"></div>
+        <div style="width:10px;height:10px;border-radius:50%;background:${jaVenceu?'#ff4757':cc.cor};flex-shrink:0;"></div>
         <div>
           <div style="font-size:13px;font-weight:700;">${cc.nome}</div>
-          <div style="font-size:11px;color:var(--text3);">Vence em ${diasVence}d · ${pct}% usado</div>
+          <div style="font-size:11px;color:${statusColor};font-weight:${jaVenceu?'700':'400'};">${statusLabel} · ${pct}% usado</div>
         </div>
       </div>
       <div style="text-align:right;">
         <div style="font-size:15px;font-weight:800;font-family:var(--m);color:${fatura>0?'var(--red)':'var(--text2)'};">${fmt(fatura)}</div>
-        <div style="font-size:10px;color:var(--text3);">fatura atual</div>
+        <div style="font-size:10px;color:${jaVenceu?'#ff4757':'var(--text3)'};">${jaVenceu?'⚠️ pagar urgente':'fatura atual'}</div>
       </div>
     </div>`;
   }).join('');
@@ -1892,6 +1933,19 @@ function getSaldoLiquido() {
 
 // ═══════ BOOT ═══════
 load();
+// Remover fixa de fatura de cartão lançada manualmente
+(function limparFixasCartao(){
+  const antes = state.fixas.length;
+  state.fixas = state.fixas.filter(f => {
+    const nome = (f.nome||'').toLowerCase();
+    // Remove fixas que parecem ser faturas de cartão
+    return !(nome.includes('santander') || nome.includes('nubank') || nome.includes('credito') || nome.includes('crédito') || nome.includes('fatura') || nome.includes('venci'));
+  });
+  if(state.fixas.length !== antes){
+    save();
+    console.log('Fixas de cartão removidas automaticamente');
+  }
+})();
 if (state.user.nome) {
   document.getElementById('onboarding').classList.add('hidden');
   initApp();
