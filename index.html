@@ -1035,18 +1035,12 @@ function renderSalary(){
   const tot=p1+p2+totExtra;
   let html='';
   const foto=state.user.foto?'<img src="'+state.user.foto+'"/>':(state.user.nome||'?')[0].toUpperCase();
-  // Se é owner: p1=próprio, p2=parceiro(a)
-  // Se é parceiro(a): p1=dono (stored), p2=parceiro armazenado — mas exibe próprio nome em p2
-  const isOwner = state.user.isOwner;
-  // Nomes corretos conforme quem está logado
+  // p1 = sempre o usuário atual, p2 = parceiro(a)
   const meuNome = state.user.nome||'Você';
-  const nomeOutro = isOwner ? (state.user.nomeP2||'Parceiro(a)') : (state.nomeP1||'Parceiro(a)');
-  // Valores: owner usa p1 como seu; parceiro usa p2 como seu
-  const meuSal = isOwner ? p1 : p2;
-  const outroSal = isOwner ? p2 : p1;
+  const nomeOutro = state.user.nomeP2||'Parceiro(a)';
   const iniOutro = nomeOutro[0].toUpperCase();
-  if(meuSal>0){html+=`<div class="sal-item"><div class="sal-av">${foto}</div><div class="sal-name">${meuNome}</div><div class="sal-v">${fmt(meuSal)}</div></div>`;}
-  if(state.user.modo==='casal'&&outroSal>0){html+=`<div class="sal-item"><div class="sal-av" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">${iniOutro}</div><div class="sal-name">${nomeOutro}</div><div class="sal-v">${fmt(outroSal)}</div></div>`;}
+  if(p1>0){html+=`<div class="sal-item"><div class="sal-av">${foto}</div><div class="sal-name">${meuNome}</div><div class="sal-v">${fmt(p1)}</div></div>`;}
+  if(state.user.modo==='casal'&&p2>0){html+=`<div class="sal-item"><div class="sal-av" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">${iniOutro}</div><div class="sal-name">${nomeOutro}</div><div class="sal-v">${fmt(p2)}</div></div>`;}
   if(!p1&&!p2&&!totExtra)html='<div class="tx-empty">Clique em Editar para configurar salários</div>';
   entradasExtra.forEach(e=>{html+=`<div class="sal-item"><div class="sal-av" style="background:linear-gradient(135deg,#16a34a,#15803d)">+</div><div class="sal-name">${e.desc}<span style="font-size:11px;color:#64748b;margin-left:6px;">${fmtDate(e.data)}</span></div><div style="display:flex;align-items:center;gap:8px;"><div class="sal-v">${fmt(e.valor)}</div><button onclick="deleteEntrada('${e.id}',event)" style="background:none;border:none;color:#4a5f70;font-size:16px;cursor:pointer;">×</button></div></div>`;});
   if(p1||p2||totExtra){
