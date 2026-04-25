@@ -1616,93 +1616,66 @@ async function initFirebase(entrouEmSalaExistente) {
     if (state.user.room) {
       let firstLoad = true;
       const roomRef = ref(db, 'rooms/' + state.user.room);
-      // Só faz push inicial se NÃO entrou em sala existente
-      if (!entrouEmSalaExistente) fbPush(db);
       onValue(roomRef, (snap) => {
         const data = snap.val();
-        // Na primeira leitura sempre aceita (carregamento inicial)
-        // Nas seguintes, ignora updates do próprio device nos últimos 3s
-        if (!data) {
-          if(firstLoad && !entrouEmSalaExistente) fbPush(db);
-          return;
-        }
-        if (!firstLoad && Date.now() - fbLastWrite < 5000) return;
-        const wasFirst = firstLoad;
-        firstLoad = false;
 
-        // PROTEÇÃO: nunca sobrescreve dados locais com Firebase vazio
-        const fbTemDados = data.fixas?.length || data.gastos?.length || data.salarios?.p1;
-        const localTemDados = state.fixas?.length || state.gastos?.length || state.salarios?.p1;
-
-        if (!fbTemDados && localTemDados) {
-          // Firebase vazio mas local tem dados — faz push pro Firebase
-          fbPush(db);
+        // PRIMEIRO LOAD: lê o Firebase antes de qualquer push
+        if (firstLoad) {
           firstLoad = false;
-          return;
-        }
-
-        // PROTEÇÃO: se Firebase tem menos fixas que local, não sobrescreve
-        const fbFixas = data.fixas?.length || 0;
-        const localFixas = state.fixas?.length || 0;
-        if (fbFixas < localFixas && !wasFirst) {
-          // Alguém deletou fixas no outro device — só aceita se foi recente
-          // (fbLastWrite proteção já cobre isso)
-          return;
-        }
-
-        let changed = false;
-
-        // Substitui listas COMPLETAS — garante deleção e atualização em tempo real
-        if (data.gastos && JSON.stringify(data.gastos) !== JSON.stringify(state.gastos)) {
-          state.gastos = data.gastos;
-          changed = true;
-        }
-        // NUNCA limpa gastos locais com Firebase vazio
-        if (data.fixas && JSON.stringify(data.fixas) !== JSON.stringify(state.fixas)) {
-          state.fixas = data.fixas;
-          changed = true;
-        }
-        if (data.cartoes && JSON.stringify(data.cartoes) !== JSON.stringify(state.cartoes)) {
-          state.cartoes = data.cartoes;
-          changed = true;
-        }
-        if (data.metas && JSON.stringify(data.metas) !== JSON.stringify(state.metas)) {
-          state.metas = data.metas;
-          changed = true;
-        }
-        if (data.salarios && JSON.stringify(data.salarios) !== JSON.stringify(state.salarios)) {
-          state.salarios = data.salarios;
-          changed = true;
-        }
-        if (data.entradas && JSON.stringify(data.entradas) !== JSON.stringify(state.entradas||[])) {
-          state.entradas = data.entradas;
-          changed = true;
-        }
-        // Sincroniza nomes
-        if (data.nomeP2 && data.nomeP2 !== state.user.nomeP2) {
-          state.user.nomeP2 = data.nomeP2;
-          changed = true;
-        }
-        // Se não é owner, usa nomeP1 como nome do dono da sala
-        if (!state.user.isOwner && data.nomeP1 && data.nomeP1 !== state.nomeP1) {
-          state.nomeP1 = data.nomeP1;
-          changed = true;
-        }
-        if (changed) {
-          localStorage.setItem('dindinpro_v4', JSON.stringify(state));
-          renderAll();
-          showSyncStatus('online');
-          if (data.lastUser && data.lastUser !== state.user.nome && data.lastAction) {
-            const icons = {add:'💸', del:'🗑️', fixa:'📋'};
-            triggerNotification((icons[data.lastAction]||'💸') + ' ' + data.lastUser, data.lastDesc);
+          if (!data) {
+            // Firebase vazio — empurra dados locais se existirem
+            if (state.fixas?.length || state.salarios?.p1) fbPush(db);
+            return;
           }
+          // Firebase tem dados — verifica qual é mais completo
+          const fbScore = (data.fixas?.length||0) * 10 + (data.gastos?.length||0) + (data.salarios?.p1 ? 5 : 0);
+          const localScore = (state.fixas?.length||0) * 10 + (state.gastos?.length||0) + (state.salarios?.p1 ? 5 : 0);
+          if (localScore > fbScore) {
+            // Local mais completo — empurra pro Firebase
+            fbPush(db);
+            return;
+          }
+          // Firebase mais completo — aceita dados do Firebase
+          applyFbData(data);
+          return;
         }
+
+        // UPDATES SUBSEQUENTES
+        if (!data) return;
+        // Ignora se foi escrita própria recente
+        if (Date.now() - fbLastWrite < 6000) return;
+        applyFbData(data);
       });
     }
     showSyncStatus('online');
   } catch(e) {
     console.warn('Firebase indisponível:', e.message);
     showSyncStatus('offline');
+  }
+}
+
+function applyFbData(data) {
+  let changed = false;
+  const fields = ['gastos','fixas','cartoes','metas','dividas','salarios','entradas'];
+  fields.forEach(f => {
+    if (data[f] === undefined) return;
+    // Nunca sobrescreve dados locais com lista vazia do Firebase
+    if ((f === 'fixas' || f === 'gastos') && Array.isArray(data[f]) && data[f].length === 0 && (state[f]?.length||0) > 0) return;
+    if (JSON.stringify(data[f]) !== JSON.stringify(state[f])) {
+      state[f] = data[f];
+      changed = true;
+    }
+  });
+  if (data.nomeP2 && data.nomeP2 !== state.user.nomeP2) { state.user.nomeP2 = data.nomeP2; changed = true; }
+  if (!state.user.isOwner && data.nomeP1 && data.nomeP1 !== state.nomeP1) { state.nomeP1 = data.nomeP1; changed = true; }
+  if (changed) {
+    localStorage.setItem('dindinpro_v4', JSON.stringify(state));
+    renderAll();
+    showSyncStatus('online');
+    if (data.lastUser && data.lastUser !== state.user.nome && data.lastDesc) {
+      const icons = {add:'💸', del:'🗑️', fixa:'📋'};
+      triggerNotification((icons[data.lastAction]||'💸') + ' ' + data.lastUser, data.lastDesc);
+    }
   }
 }
 
