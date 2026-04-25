@@ -1054,6 +1054,7 @@ function renderSalary(){
   document.getElementById('salary-body').innerHTML=html;
 }
 function renderDonut(gs){
+  // Conta TODOS os gastos — débito, PIX, dinheiro e crédito
   const cats={};gs.forEach(g=>{cats[g.cat]=(cats[g.cat]||0)+Number(g.valor);});
   const entries=Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const total=entries.reduce((s,[,v])=>s+v,0);
