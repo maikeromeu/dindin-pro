@@ -1749,12 +1749,19 @@ if(_auth){
             
             if(S.nome){
               R('t-login').style.display='none';
+              R('app-scrs').style.display='';
+              R('bnav').classList.add('vis');
+              R('fab').classList.add('vis');
               ativarApp();
             } else {
-              // Has auth but no name — show onboarding or setup
+              // Has Google auth but no name — skip onboarding, go to setup with navbar
               R('t-login').style.display='none';
-              R('ob-scrs').style.display='flex';
-              R('app-scrs').style.display='none';
+              R('ob-scrs').style.display='none';
+              R('app-scrs').style.display='';
+              R('bnav').classList.add('vis');
+              R('fab').classList.add('vis');
+              document.querySelectorAll('#app-scrs .tela').forEach(t=>t.classList.remove('vis'));
+              R('t-setup').classList.add('vis');
             }
           }).catch(()=>{ setSyncStatus(false); prosseguirSemDados(); });
         }).catch(()=>{ setSyncStatus(false); prosseguirSemDados(); });
