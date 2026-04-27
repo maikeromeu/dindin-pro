@@ -768,7 +768,11 @@ function entrar(){
   const code=(R('inp-code')?.value||'').trim().toUpperCase();
   S.nome=nome; S.modo=_modo;
   if(_modo==='casal' && code) S.cod=code;
-  save(); ativarApp();
+  save();
+  R('app-scrs').style.display='';
+  R('bnav').classList.add('vis');
+  R('fab').classList.add('vis');
+  ativarApp();
 }
 
 // ── ONBOARDING ───────────────────────────────────
@@ -1649,12 +1653,16 @@ function loginGoogle(){
 }
 
 function loginAnonimo(){
-  // Show onboarding without auth
   R('t-login').style.display='none';
   if(S.nome){ ativarApp(); }
   else {
-    R('ob-scrs').style.display='flex';
-    R('app-scrs').style.display='none';
+    // Pula onboarding, vai direto para setup dentro do app
+    R('ob-scrs').style.display='none';
+    R('app-scrs').style.display='';
+    R('bnav').classList.add('vis');
+    R('fab').classList.add('vis');
+    document.querySelectorAll('#app-scrs .tela').forEach(t=>t.classList.remove('vis'));
+    R('t-setup').classList.add('vis');
   }
 }
 
