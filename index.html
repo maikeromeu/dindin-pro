@@ -91,22 +91,22 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
 
 /* ── APP ── */
 #app{position:fixed;inset:0;display:flex;flex-direction:column;}
-.app-hdr{background:var(--bg);padding:calc(env(safe-area-inset-top,0px)+12px) 20px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:1px solid var(--border);}
+.app-hdr{background:var(--bg);padding:calc(env(safe-area-inset-top,0px)+14px) 20px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:1px solid var(--border);gap:12px;position:relative;z-index:60;}
 .hdr-sub{font-size:12px;color:var(--t3);font-weight:500;margin-bottom:2px;}
 .hdr-name{font-size:20px;font-weight:800;letter-spacing:-.3px;}
-.month-pill{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--rf);padding:8px 14px;}
+.month-pill{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--rf);padding:7px 10px;flex-shrink:0;}
 .mnav{background:none;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0;line-height:1;}
-.month-txt{font-size:13px;font-weight:700;min-width:80px;text-align:center;}
-.avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#16A855);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#080C14;overflow:hidden;flex-shrink:0;position:relative;}
+.month-txt{font-size:12px;font-weight:700;min-width:72px;text-align:center;}
+.avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#16A855);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#080C14;overflow:visible;flex-shrink:0;position:relative;}
 .avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
-.sdot{position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);}
+.sdot{position:absolute;bottom:1px;right:1px;width:9px;height:9px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);pointer-events:none;}
 .sdot.off{background:var(--t3);}
 .app-body{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
 .pane{display:none;padding-bottom:84px;}
 .pane.active{display:block;}
 
 /* ── TAB BAR ── */
-.tab-bar{display:flex;flex-shrink:0;background:var(--bg1);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom,4px);}
+.tab-bar{display:flex;flex-shrink:0;background:var(--bg1);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom,4px);position:relative;z-index:48;}
 .tb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px 8px;background:none;border:none;cursor:pointer;color:var(--t3);transition:color .2s;font-family:var(--f);gap:4px;}
 .tb.active{color:var(--accent);}
 .tb svg{width:22px;height:22px;}
@@ -292,7 +292,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
 .owner-badge{background:var(--accent);color:#080C14;font-size:11px;font-weight:800;padding:3px 10px;border-radius:var(--rf);}
 
 /* ── FAB ── */
-.fab{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px)+74px);right:18px;width:54px;height:54px;border-radius:50%;background:var(--accent);border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 0 24px rgba(34,208,122,0.3);z-index:50;cursor:pointer;transition:transform .15s;color:#080C14;}
+.fab{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px)+78px);right:20px;width:52px;height:52px;border-radius:50%;background:var(--accent);border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(34,208,122,0.4);z-index:49;cursor:pointer;transition:transform .15s;color:#080C14;}
 .fab:active{transform:scale(.92);}
 .fab svg{width:24px;height:24px;}
 
@@ -997,9 +997,16 @@ function atualizarAvatar() {
   const btn = document.getElementById('avatar-btn');
   const txt = document.getElementById('av-txt');
   if (S.foto) {
-    btn.innerHTML = '<img src="'+S.foto+'"/><div class="sdot off" id="sdot"></div>';
-  } else if (txt) {
-    txt.textContent = (S.nome||'?')[0].toUpperCase();
+    // Manter apenas a imagem e o dot — não substituir innerHTML completo
+    txt.style.display = 'none';
+    // Verificar se já tem img
+    if (!btn.querySelector('img')) {
+      const img = document.createElement('img');
+      img.src = S.foto;
+      btn.insertBefore(img, btn.querySelector('.sdot'));
+    }
+  } else {
+    if (txt) txt.textContent = (S.nome||'?')[0].toUpperCase();
   }
   const cn = document.getElementById('cfg-nome');
   const cr = document.getElementById('cfg-room');
