@@ -323,6 +323,16 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
 /* TOAST */
 .toast{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px)+84px);left:50%;transform:translateX(-50%) translateY(12px);background:var(--surface2);border:1px solid var(--border2);color:var(--t1);padding:10px 20px;border-radius:var(--rf);font-size:13px;font-weight:600;z-index:400;opacity:0;transition:all .3s;white-space:nowrap;pointer-events:none;max-width:90vw;overflow:hidden;text-overflow:ellipsis;box-shadow:0 8px 32px rgba(0,0,0,.4);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.ia-sug-btn{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--t2);cursor:pointer;text-align:left;transition:background .15s;font-family:var(--f);}
+.ia-sug-btn:active{background:var(--accent-dim);}
+.ia-bubble-bot{background:var(--surface2);border:1px solid var(--border);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:14px;line-height:1.6;color:var(--t1);align-self:flex-start;max-width:92%;}
+.ia-bubble-user{background:var(--accent);border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:14px;color:#080C14;font-weight:600;align-self:flex-end;max-width:88%;}
+.ia-typing{display:flex;gap:4px;align-items:center;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:16px 16px 16px 4px;align-self:flex-start;}
+.ia-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:iablink 1.2s infinite;}
+.ia-dot:nth-child(2){animation-delay:.2s}.ia-dot:nth-child(3){animation-delay:.4s}
+@keyframes iablink{0%,80%,100%{opacity:.3}40%{opacity:1}}
+.ia-lbl{font-size:10px;font-weight:700;color:var(--accent);margin-bottom:3px;display:flex;align-items:center;gap:4px;}
 </style>
 </head>
 <body>
@@ -541,6 +551,31 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
         </div>
       </div>
     </div>
+
+    <!-- IA CONSELHEIRO -->
+    <div class="pane" id="pane-ia">
+      <div style="padding:16px 16px 0;">
+        <div style="background:linear-gradient(135deg,#0d2818,#081812);border:1px solid rgba(34,208,122,0.2);border-radius:24px;padding:16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;">
+          <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#22D07A,#16A855);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">✨</div>
+          <div><div style="font-size:15px;font-weight:800;color:var(--t1);">Conselheiro Financeiro IA</div><div style="font-size:12px;color:var(--t3);margin-top:2px;">Analisa seus dados e dá conselhos personalizados</div></div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;overflow:hidden;margin-bottom:12px;">
+          <div id="ia-chat" style="min-height:260px;max-height:380px;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;"></div>
+          <div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;">
+            <input id="ia-input" class="fi" placeholder="Pergunte sobre suas finanças..." style="flex:1;height:44px;font-size:14px;" onkeydown="if(event.key==='Enter')sendIA()"/>
+            <button onclick="sendIA()" style="height:44px;padding:0 16px;border-radius:12px;background:var(--accent);border:none;color:#080C14;font-weight:700;font-size:14px;cursor:pointer;flex-shrink:0;">Enviar</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;" id="ia-sugs">
+          <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Sugestões rápidas</div>
+          <button class="ia-sug-btn" onclick="askIA(this,'Como podemos sair das dívidas mais rápido?')">Como podemos sair das dívidas mais rápido? ↗</button>
+          <button class="ia-sug-btn" onclick="askIA(this,'Onde estamos gastando mais? Como reduzir?')">Onde estamos gastando mais? Como reduzir? ↗</button>
+          <button class="ia-sug-btn" onclick="askIA(this,'Conseguimos economizar este mês?')">Conseguimos economizar este mês? ↗</button>
+          <button class="ia-sug-btn" onclick="askIA(this,'Qual é nossa situação financeira geral?')">Qual é nossa situação financeira geral? ↗</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- TAB BAR -->
@@ -551,6 +586,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
     <button class="tb" data-tab="cartoes" onclick="goTab('cartoes')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><span class="tl">Cartões</span></button>
     <button class="tb" data-tab="metas" onclick="goTab('metas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span class="tl">Metas</span></button>
     <button class="tb" data-tab="dividas" onclick="goTab('dividas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="tl">Dívidas</span></button>
+    <button class="tb" data-tab="ia" onclick="goTab('ia')" id="tb-ia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg><span class="tl">IA</span></button>
     <button class="tb" data-tab="config" onclick="goTab('config')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg><span class="tl">Config</span></button>
   </div>
   <button class="fab hidden" id="fab-btn" onclick="openModal('modal-gasto')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
@@ -1034,6 +1070,7 @@ function goTab(t) {
   if (t==='cartoes') rCartoes();
   if (t==='diarias') { S.barSel=null; rDiarias(); }
   if (t==='dividas') rDividas();
+  if (t==='ia') initIAChat();
 }
 
 // ── HELPERS ──
@@ -1670,6 +1707,120 @@ if(S.nome){
 } else {
   document.getElementById('s-room').value = genRoom();
 }
+
+
+// ── CONSELHEIRO IA ──
+let iaChatHistory = [];
+
+function buildIAContext() {
+  const gm = gastosMes(S.mes, S.ano);
+  const totalOut = gm.filter(g=>g.tipo!=='credito').reduce((s,g)=>s+Number(g.valor),0);
+  const totalCC = gm.filter(g=>g.tipo==='credito').reduce((s,g)=>s+Number(g.valor),0);
+  const extrasM = entradasMes(S.mes, S.ano).reduce((s,e)=>s+Number(e.valor),0);
+  const totalIn = Number(S.salP1||0)+Number(S.salP2||0)+extrasM;
+  const saldo = totalIn - totalOut;
+  const nomeP2 = S.nomeP2 || 'Parceiro(a)';
+
+  // Categorias
+  const cats = {};
+  gm.forEach(g => { cats[g.cat] = (cats[g.cat]||0)+Number(g.valor); });
+  const catTop = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([c,v])=>`${c}: R$${v.toFixed(2)}`).join(', ');
+
+  // Dívidas
+  const divTotal = (S.dividas||[]).reduce((s,d)=>s+Number(d.saldo),0);
+  const divParc = (S.dividas||[]).reduce((s,d)=>s+Number(d.parcela||0),0);
+
+  // Fixas
+  const fixasTotal = (S.fixas||[]).reduce((s,f)=>s+Number(f.valor),0);
+  const fixasPagas = (S.fixas||[]).filter(f=>f.pago).reduce((s,f)=>s+Number(f.valor),0);
+
+  return `Você é o Conselheiro Financeiro do app DinDin Pro, especialista em finanças para casais brasileiros.
+
+DADOS FINANCEIROS DO CASAL (${MESES[S.mes]} ${S.ano}):
+👤 Casal: ${S.nome}${S.modo==='casal' ? ' e '+nomeP2 : ' (solo)'}
+💰 Renda total: R$${totalIn.toFixed(2)} (${S.nome}: R$${Number(S.salP1||0).toFixed(2)}${S.modo==='casal'?', '+nomeP2+': R$'+Number(S.salP2||0).toFixed(2):''}, extras: R$${extrasM.toFixed(2)})
+💸 Gastos débito/PIX/dinheiro: R$${totalOut.toFixed(2)}
+💳 Gastos no crédito: R$${totalCC.toFixed(2)}
+📊 Saldo disponível: R$${saldo.toFixed(2)}
+📋 Despesas fixas: R$${fixasTotal.toFixed(2)} (pagas: R$${fixasPagas.toFixed(2)})
+🧨 Dívidas: R$${divTotal.toFixed(2)} total | R$${divParc.toFixed(2)}/mês em parcelas
+🏷️ Maiores categorias de gasto: ${catTop || 'Sem gastos lançados'}
+
+REGRAS:
+- Responda em português brasileiro informal e caloroso
+- Seja direto, prático e use os números reais acima
+- Máximo 4 parágrafos curtos
+- Use emojis moderadamente
+- Dê conselhos específicos baseados nos dados do casal
+- Se não tiver dados suficientes, oriente a lançar no app`;
+}
+
+async function sendIA() {
+  const input = document.getElementById('ia-input');
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+  document.getElementById('ia-sugs').style.display = 'none';
+  await runIA(q);
+}
+
+async function askIA(btn, q) {
+  document.getElementById('ia-sugs').style.display = 'none';
+  await runIA(q);
+}
+
+async function runIA(question) {
+  const chat = document.getElementById('ia-chat');
+  
+  // Mensagem do usuário
+  const uDiv = document.createElement('div');
+  uDiv.className = 'ia-bubble-user';
+  uDiv.textContent = question;
+  chat.appendChild(uDiv);
+
+  // Typing
+  const typDiv = document.createElement('div');
+  typDiv.innerHTML = '<div class="ia-lbl">✨ Conselheiro DinDin</div><div class="ia-typing"><div class="ia-dot"></div><div class="ia-dot"></div><div class="ia-dot"></div></div>';
+  chat.appendChild(typDiv);
+  chat.scrollTop = chat.scrollHeight;
+
+  iaChatHistory.push({ role: 'user', content: question });
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system: buildIAContext(),
+        messages: iaChatHistory.slice(-10)
+      })
+    });
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'Não consegui responder agora. Tente novamente!';
+    
+    typDiv.remove();
+    const bDiv = document.createElement('div');
+    bDiv.innerHTML = '<div class="ia-lbl">✨ Conselheiro DinDin</div><div class="ia-bubble-bot">' + reply.replace(/\n/g,'<br>') + '</div>';
+    chat.appendChild(bDiv);
+    iaChatHistory.push({ role: 'assistant', content: reply });
+  } catch(e) {
+    typDiv.remove();
+    const bDiv = document.createElement('div');
+    bDiv.innerHTML = '<div class="ia-bubble-bot">❌ Erro de conexão. Verifique sua internet e tente novamente.</div>';
+    chat.appendChild(bDiv);
+  }
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// Inicializar chat com boas-vindas
+function initIAChat() {
+  const chat = document.getElementById('ia-chat');
+  if (!chat || chat.children.length > 0) return;
+  const bDiv = document.createElement('div');
+  bDiv.innerHTML = '<div class="ia-lbl">✨ Conselheiro DinDin</div><div class="ia-bubble-bot">Olá! 👋 Sou seu conselheiro financeiro. Já analisei os dados de vocês e estou pronto para ajudar. O que querem saber?</div>';
+  chat.appendChild(bDiv);
+}
+
 </script>
 </body>
 </html>
