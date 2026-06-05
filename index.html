@@ -70,13 +70,13 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
 .mode-card p{font-size:11px;color:var(--t3);}
 
 /* ── INPUTS ── */
-.fg{margin-bottom:14px;}
-.fl{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase;}
-.fi{width:100%;height:52px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);color:var(--t1);font-family:var(--f);font-size:15px;padding:0 16px;outline:none;transition:border-color .2s;}
+.fg{margin-bottom:11px;}
+.fl{display:block;font-size:11px;font-weight:600;color:var(--t3);margin-bottom:4px;letter-spacing:.5px;text-transform:uppercase;}
+.fi{width:100%;height:46px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);color:var(--t1);font-family:var(--f);font-size:15px;padding:0 16px;outline:none;transition:border-color .2s;}
 .fi:focus{border-color:var(--accent);}
 .fi::placeholder{color:var(--t3);}
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.fsel{width:100%;height:52px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);color:var(--t1);font-family:var(--f);font-size:15px;padding:0 16px;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath fill='%23475569' d='M5 7L0 0h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center;}
+.fsel{width:100%;height:46px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);color:var(--t1);font-family:var(--f);font-size:15px;padding:0 16px;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath fill='%23475569' d='M5 7L0 0h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center;}
 .fsel option{background:#111827;}
 .rrow{display:flex;gap:8px;}
 .rrow .fi{flex:1;}
@@ -292,23 +292,24 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
 .owner-badge{background:var(--accent);color:#080C14;font-size:11px;font-weight:800;padding:3px 10px;border-radius:var(--rf);}
 
 /* ── FAB ── */
-.fab{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px)+78px);right:20px;width:52px;height:52px;border-radius:50%;background:var(--accent);border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(34,208,122,0.4);z-index:49;cursor:pointer;transition:transform .15s;color:#080C14;}
-.fab:active{transform:scale(.92);}
-.fab svg{width:24px;height:24px;}
+.fab{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px)+88px);right:18px;height:54px;padding:0 22px 0 17px;border-radius:27px;background:var(--accent);border:none;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 6px 24px rgba(34,208,122,0.55);z-index:60;cursor:pointer;transition:transform .15s;color:#080C14;font-family:var(--f);font-size:15px;font-weight:800;letter-spacing:-.2px;animation:fabPulse 2.6s ease-in-out infinite;}
+.fab:active{transform:scale(.94);}
+.fab svg{width:22px;height:22px;}
+@keyframes fabPulse{0%,100%{box-shadow:0 6px 24px rgba(34,208,122,0.5);}50%{box-shadow:0 6px 32px rgba(34,208,122,0.9);}}
 
 /* ── MODAIS ── */
 .modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .3s;}
 .modal-overlay.open{opacity:1;pointer-events:all;}
-.modal-sheet{width:100%;background:var(--bg1);border-radius:28px 28px 0 0;padding:0 20px calc(env(safe-area-inset-bottom,0px)+28px);transform:translateY(100%);transition:transform .4s cubic-bezier(.4,0,.2,1);max-height:94vh;overflow-y:auto;}
+.modal-sheet{width:100%;background:var(--bg1);border-radius:28px 28px 0 0;padding:0 20px calc(env(safe-area-inset-bottom,0px)+20px);transform:translateY(100%);transition:transform .4s cubic-bezier(.4,0,.2,1);max-height:92vh;overflow-y:auto;}
 .modal-overlay.open .modal-sheet{transform:translateY(0);}
-.modal-handle{width:36px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;margin:14px auto 20px;}
+.modal-handle{width:36px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;margin:9px auto 14px;}
 .modal-title{font-size:18px;font-weight:800;margin-bottom:20px;letter-spacing:-.3px;}
 .mf-footer{display:flex;gap:10px;margin-top:8px;}
-.mf-cancel{flex:1;height:52px;border-radius:var(--rf);background:var(--surface);border:1.5px solid var(--border2);color:var(--t2);font-family:var(--f);font-size:15px;cursor:pointer;}
-.mf-save{flex:2;height:52px;border-radius:var(--rf);background:var(--accent);border:none;color:#080C14;font-family:var(--f);font-size:15px;font-weight:700;cursor:pointer;}
+.mf-cancel{flex:1;height:48px;border-radius:var(--rf);background:var(--surface);border:1.5px solid var(--border2);color:var(--t2);font-family:var(--f);font-size:15px;cursor:pointer;}
+.mf-save{flex:2;height:48px;border-radius:var(--rf);background:var(--accent);border:none;color:#080C14;font-family:var(--f);font-size:15px;font-weight:700;cursor:pointer;}
 .mf-save:active,.mf-cancel:active{opacity:.85;}
 .pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.pay-opt{height:52px;border-radius:var(--r);background:var(--surface);border:1.5px solid var(--border2);color:var(--t2);font-family:var(--f);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.pay-opt{height:44px;border-radius:var(--r);background:var(--surface);border:1.5px solid var(--border2);color:var(--t2);font-family:var(--f);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;}
 .pay-opt.sel{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);}
 .install-hint{background:var(--accent-dim);border:1px solid rgba(34,208,122,0.15);border-radius:var(--r);padding:10px 12px;font-size:12px;color:var(--t2);margin-top:6px;}
 .install-hint strong{color:var(--accent);}
@@ -440,11 +441,11 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
         <div class="card"><div class="donut-wrap"><div class="donut-rel"><svg id="donut-svg" width="100" height="100" viewBox="0 0 100 100"></svg><div class="donut-center"><span class="donut-pct" id="donut-pct">—</span><span class="donut-sub" id="donut-sub"></span></div></div><div class="legend" id="donut-legend"></div></div></div>
       </div>
       <div class="sec">
-        <div class="sec-hd"><span class="sec-title">Metas</span><button class="btn-sm" onclick="switchTab('metas')">Ver todas</button></div>
+        <div class="sec-hd"><span class="sec-title">Metas</span><button class="btn-sm" onclick="goTab('metas')">Ver todas</button></div>
         <div class="card"><div id="goals-home"></div></div>
       </div>
       <div class="sec">
-        <div class="sec-hd"><span class="sec-title">Recentes</span><button class="btn-sm" onclick="switchTab('diarias')">Ver tudo</button></div>
+        <div class="sec-hd"><span class="sec-title">Recentes</span><button class="btn-sm" onclick="goTab('diarias')">Ver tudo</button></div>
         <div class="card"><div id="tx-recentes"></div></div>
       </div>
     </div>
@@ -589,7 +590,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
     <button class="tb" data-tab="ia" onclick="goTab('ia')" id="tb-ia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg><span class="tl">IA</span></button>
     <button class="tb" data-tab="config" onclick="goTab('config')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg><span class="tl">Config</span></button>
   </div>
-  <button class="fab hidden" id="fab-btn" onclick="openModal('modal-gasto')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+  <button class="fab hidden" id="fab-btn" onclick="openModal('modal-gasto')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Lançar</button>
 </div>
 
 <!-- MODAIS -->
@@ -597,7 +598,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
 <div class="modal-overlay" id="modal-gasto">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;">
       <div class="modal-title" style="margin:0">Lançar gasto</div>
       <button id="voice-btn" onclick="startVoice()" style="background:var(--accent-dim);border:1px solid rgba(34,208,122,0.25);color:var(--accent);font-size:13px;font-weight:700;padding:7px 14px;border-radius:var(--rf);cursor:pointer;font-family:var(--f);">🎤 Voz</button>
     </div>
