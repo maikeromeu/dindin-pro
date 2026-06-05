@@ -107,10 +107,10 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
 
 /* ── TAB BAR ── */
 .tab-bar{display:flex;flex-shrink:0;background:var(--bg1);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom,4px);position:relative;z-index:48;}
-.tb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px 8px;background:none;border:none;cursor:pointer;color:var(--t3);transition:color .2s;font-family:var(--f);gap:4px;}
+.tb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 2px 6px;background:none;border:none;cursor:pointer;color:var(--t3);transition:color .2s;font-family:var(--f);gap:3px;}
 .tb.active{color:var(--accent);}
-.tb svg{width:22px;height:22px;}
-.tb .tl{font-size:10px;font-weight:600;letter-spacing:.2px;}
+.tb svg{width:19px;height:19px;}
+.tb .tl{font-size:9px;font-weight:600;letter-spacing:.2px;}
 
 /* ── LAYOUT ── */
 .sec{padding:16px 16px 0;}
@@ -1131,7 +1131,7 @@ function rAlertas() {
   c.innerHTML = '';
   const hoje_d = new Date().getDate();
   // Fixas vencendo
-  (S.fixas||[]).filter(f => !f.pago).forEach(f => {
+  (S.fixas||[]).filter(f => f.pagoMes!==`${S.ano}-${S.mes}`).forEach(f => {
     const diff = Number(f.dia||1) - hoje_d;
     if (diff===0) c.innerHTML += `<div class="alert-item a-danger"><span class="a-ico">🔴</span><span class="a-txt"><strong>${f.nome}</strong> vence hoje — ${fmt(f.valor)}</span><button class="a-btn" onclick="abrirPagarFixa('${f.id}')">Pagar</button></div>`;
     else if (diff===1) c.innerHTML += `<div class="alert-item a-warn"><span class="a-ico">⚠️</span><span class="a-txt"><strong>${f.nome}</strong> vence amanhã — ${fmt(f.valor)}</span><button class="a-btn" onclick="goTab('fixas')">Ver</button></div>`;
@@ -1238,7 +1238,7 @@ function delGasto(id,e){e.stopPropagation();S.gastos=(S.gastos||[]).filter(x=>x.
 // ── FIXAS ──
 function rFixas() {
   const tot = (S.fixas||[]).reduce((s,f)=>s+Number(f.valor),0);
-  const pag = (S.fixas||[]).filter(f=>f.pago).reduce((s,f)=>s+Number(f.valor),0);
+  const mk=`${S.ano}-${S.mes}`;const pag = (S.fixas||[]).filter(f=>f.pagoMes===mk).reduce((s,f)=>s+Number(f.valor),0);
   document.getElementById('ft-total').textContent = fmt(tot);
   document.getElementById('ft-pagas').textContent = fmt(pag);
   document.getElementById('ft-pend').textContent = fmt(tot-pag);
@@ -1246,20 +1246,21 @@ function rFixas() {
   if (!S.fixas.length) { el.innerHTML='<div class="tx-empty">Nenhuma despesa fixa cadastrada</div>'; return; }
   el.innerHTML = (S.fixas||[]).map(f =>
     `<div class="fixa-row">
-      <div class="fixa-check ${f.pago?'paid':''}" onclick="toggleFixa('${f.id}')">${f.pago?'✓':''}</div>
+      <div class="fixa-check ${f.pagoMes===mk?'paid':''}" onclick="toggleFixa('${f.id}')">${f.pagoMes===mk?'✓':''}</div>
       <div class="fixa-body"><div class="fixa-name">${f.nome}</div><div class="fixa-due">Vence dia ${f.dia||'—'} · ${f.cat}</div></div>
-      <div class="fixa-right"><div class="fixa-amt">${fmt(f.valor)}</div><div class="s-pill ${f.pago?'s-paid':'s-pend'}">${f.pago?'Paga':'Pendente'}</div></div>
+      <div class="fixa-right"><div class="fixa-amt">${fmt(f.valor)}</div><div class="s-pill ${f.pagoMes===mk?'s-paid':'s-pend'}">${f.pagoMes===mk?'Paga':'Pendente'}</div></div>
       <button class="tx-del" onclick="delFixa('${f.id}',event)" style="margin-left:6px;">×</button>
     </div>`
   ).join('');
 }
 function toggleFixa(id) {
   const f = (S.fixas||[]).find(x=>x.id===id);
+  const mk=`${S.ano}-${S.mes}`;
   if (!f) return;
-  if (f.pago) {
+  if (f.pagoMes===mk) {
     if (!confirm('Desmarcar pagamento?')) return;
     S.gastos = (S.gastos||[]).filter(g=>g.fixaId!==id);
-    f.pago = false;
+    f.pagoMes = null;
     save('del', f.nome);
   } else {
     abrirPagarFixa(id);
@@ -1286,7 +1287,7 @@ function confirmarFixa() {
   if (!tipo) { toast('Selecione a forma de pagamento'); return; }
   const f = (S.fixas||[]).find(x=>x.id===id);
   if (!f) return;
-  f.pago = true;
+  f.pagoMes = `${S.ano}-${S.mes}`;
   (S.gastos||(S.gastos=[])).push({
     id: uid(), desc: f.nome, valor: f.valor, cat: f.cat||'📦 Outros',
     quem: S.nome, data: hoje(), tipo, cartaoId: null, fixaId: id
@@ -1733,7 +1734,7 @@ function buildIAContext() {
 
   // Fixas
   const fixasTotal = (S.fixas||[]).reduce((s,f)=>s+Number(f.valor),0);
-  const fixasPagas = (S.fixas||[]).filter(f=>f.pago).reduce((s,f)=>s+Number(f.valor),0);
+  const iaMk=`${S.ano}-${S.mes}`;const fixasPagas = (S.fixas||[]).filter(f=>f.pagoMes===iaMk).reduce((s,f)=>s+Number(f.valor),0);
 
   return `Você é o Conselheiro Financeiro do app DinDin Pro, especialista em finanças para casais brasileiros.
 
