@@ -107,10 +107,13 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
 
 /* ── TAB BAR ── */
 .tab-bar{display:flex;flex-shrink:0;background:var(--bg1);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom,4px);position:relative;z-index:48;}
-.tb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 2px 6px;background:none;border:none;cursor:pointer;color:var(--t3);transition:color .2s;font-family:var(--f);gap:3px;}
+.tb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:9px 2px 8px;background:none;border:none;cursor:pointer;color:var(--t3);transition:color .2s;font-family:var(--f);gap:4px;}
 .tb.active{color:var(--accent);}
-.tb svg{width:19px;height:19px;}
-.tb .tl{font-size:9px;font-weight:600;letter-spacing:.2px;}
+.tb svg{width:24px;height:24px;}
+.tb .tl{font-size:10.5px;font-weight:600;letter-spacing:.1px;}
+.contas-seg{display:flex;gap:6px;padding:14px 16px 2px;}
+.cseg{flex:1;height:38px;border-radius:11px;background:var(--surface);border:1.5px solid var(--border2);color:var(--t2);font-family:var(--f);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;}
+.cseg.active{background:var(--accent);border-color:var(--accent);color:#080C14;font-weight:800;}
 
 /* ── LAYOUT ── */
 .sec{padding:16px 16px 0;}
@@ -452,6 +455,11 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
 
     <!-- FIXAS -->
     <div class="pane" id="pane-fixas">
+      <div class="contas-seg">
+        <button class="cseg" data-sub="fixas" onclick="goContas('fixas')">Fixas</button>
+        <button class="cseg" data-sub="cartoes" onclick="goContas('cartoes')">Cartões</button>
+        <button class="cseg" data-sub="dividas" onclick="goContas('dividas')">Dívidas</button>
+      </div>
       <div class="sec" style="padding-top:16px;">
         <div class="sec-hd"><span class="sec-title">Despesas Fixas</span><button class="btn-as" onclick="openModal('modal-fixa')">+ Adicionar</button></div>
         <div class="card">
@@ -486,6 +494,11 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
 
     <!-- CARTÕES -->
     <div class="pane" id="pane-cartoes">
+      <div class="contas-seg">
+        <button class="cseg" data-sub="fixas" onclick="goContas('fixas')">Fixas</button>
+        <button class="cseg" data-sub="cartoes" onclick="goContas('cartoes')">Cartões</button>
+        <button class="cseg" data-sub="dividas" onclick="goContas('dividas')">Dívidas</button>
+      </div>
       <div class="sec" style="padding-top:16px;">
         <div class="sec-hd"><span class="sec-title">Cartões de Crédito</span><button class="btn-as" onclick="openModal('modal-cartao')">+ Novo</button></div>
         <div id="cc-list-wrap" style="padding-bottom:4px;"></div>
@@ -512,6 +525,11 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
 
     <!-- DÍVIDAS -->
     <div class="pane" id="pane-dividas">
+      <div class="contas-seg">
+        <button class="cseg" data-sub="fixas" onclick="goContas('fixas')">Fixas</button>
+        <button class="cseg" data-sub="cartoes" onclick="goContas('cartoes')">Cartões</button>
+        <button class="cseg" data-sub="dividas" onclick="goContas('dividas')">Dívidas</button>
+      </div>
       <div class="sec" style="padding-top:16px;">
         <div class="sec-hd"><span class="sec-title">Plano Sair das Dívidas</span><button class="btn-as" onclick="openModal('modal-divida')">+ Adicionar</button></div>
         <div class="card">
@@ -582,13 +600,10 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
   <!-- TAB BAR -->
   <div class="tab-bar">
     <button class="tb active" data-tab="inicio" onclick="goTab('inicio')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="tl">Início</span></button>
-    <button class="tb" data-tab="fixas" onclick="goTab('fixas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span class="tl">Fixas</span></button>
     <button class="tb" data-tab="diarias" onclick="goTab('diarias')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg><span class="tl">Diárias</span></button>
-    <button class="tb" data-tab="cartoes" onclick="goTab('cartoes')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><span class="tl">Cartões</span></button>
+    <button class="tb" data-tab="contas" onclick="goContas()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 012-2h14a2 2 0 012 2v3h-5a2 2 0 000 4h5v3a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><circle cx="16" cy="12" r="1"/></svg><span class="tl">Contas</span></button>
     <button class="tb" data-tab="metas" onclick="goTab('metas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span class="tl">Metas</span></button>
-    <button class="tb" data-tab="dividas" onclick="goTab('dividas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="tl">Dívidas</span></button>
     <button class="tb" data-tab="ia" onclick="goTab('ia')" id="tb-ia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg><span class="tl">IA</span></button>
-    <button class="tb" data-tab="config" onclick="goTab('config')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg><span class="tl">Config</span></button>
   </div>
   <button class="fab hidden" id="fab-btn" onclick="openModal('modal-gasto')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Lançar</button>
 </div>
@@ -811,6 +826,11 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
       <div style="font-size:12px;color:var(--t3);margin-top:4px;" id="p-mode-lbl">—</div>
     </div>
     <div class="fg"><label class="fl">Seu nome</label><input class="fi" id="p-name-in" placeholder="Ex: Maike"/></div>
+    <button onclick="closeModal('modal-profile');goTab('config');" style="width:100%;display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:14px;cursor:pointer;font-family:var(--f);">
+      <span style="font-size:18px;">⚙️</span>
+      <span style="flex:1;text-align:left;font-size:14px;font-weight:600;color:var(--t1);">Configurações</span>
+      <span style="color:var(--t3);font-size:18px;">›</span>
+    </button>
     <div class="mf-footer">
       <button class="mf-cancel" onclick="closeModal('modal-profile')">Cancelar</button>
       <button class="mf-save" onclick="saveProfile()">Salvar</button>
@@ -1062,16 +1082,29 @@ function atualizarOwner() {
     pc.classList.remove('hidden');
   }
 }
+let _contasSub = 'fixas';
 function goTab(t) {
+  if (t==='fixas' || t==='cartoes' || t==='dividas') { goContas(t); return; }
   document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tb').forEach(b => b.classList.remove('active'));
   document.getElementById('pane-'+t).classList.add('active');
-  document.querySelector('[data-tab="'+t+'"]').classList.add('active');
+  const _tb=document.querySelector('[data-tab="'+t+'"]'); if(_tb)_tb.classList.add('active');
   document.getElementById('fab-btn').classList.toggle('hidden', t!=='diarias');
-  if (t==='cartoes') rCartoes();
   if (t==='diarias') { S.barSel=null; rDiarias(); }
-  if (t==='dividas') rDividas();
   if (t==='ia') initIAChat();
+}
+function goContas(sub){
+  sub = sub || _contasSub || 'fixas';
+  _contasSub = sub;
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tb').forEach(b => b.classList.remove('active'));
+  document.getElementById('pane-'+sub).classList.add('active');
+  const _tb=document.querySelector('[data-tab="contas"]'); if(_tb)_tb.classList.add('active');
+  document.getElementById('fab-btn').classList.add('hidden');
+  document.querySelectorAll('.cseg').forEach(b=>b.classList.toggle('active', b.getAttribute('data-sub')===sub));
+  if (sub==='cartoes') rCartoes();
+  else if (sub==='dividas') rDividas();
+  else if (sub==='fixas' && typeof rFixas==='function') rFixas();
 }
 
 // ── HELPERS ──
