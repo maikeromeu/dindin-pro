@@ -898,22 +898,59 @@ let S = {
 };
 
 // ── FIREBASE ──
-let fbDB=null, fbRef=null, fbSet=null, fbMs=0, fbOk=false;
+let fbDB=null, fbRef=null, fbTxn=null, fbMs=0, fbOk=false, fbLastSynced=null;
+const SYNC_KEYS = ['gastos','entradas','fixas','cartoes','metas','dividas'];
+
+// Tira uma "foto" das listas sincronizáveis — serve de base para o merge de 3 vias
+function snapshotLists(src) {
+  const o = {};
+  SYNC_KEYS.forEach(k => { o[k] = JSON.parse(JSON.stringify(src[k]||[])); });
+  return o;
+}
+
+// Merge de 3 vias por item (base = último estado sincronizado, local = este device, remoto = outro device)
+// Decide o que manter sem nunca perder um item que só um dos dois lados alterou.
+function mergeList3way(base, local, remote) {
+  base = base||[]; local = local||[]; remote = remote||[];
+  const bM = new Map(base.map(i=>[i.id,i]));
+  const lM = new Map(local.map(i=>[i.id,i]));
+  const rM = new Map(remote.map(i=>[i.id,i]));
+  const ids = new Set([...bM.keys(), ...lM.keys(), ...rM.keys()]);
+  const out = [];
+  ids.forEach(id => {
+    const b=bM.get(id), l=lM.get(id), r=rM.get(id);
+    const lCh = JSON.stringify(l) !== JSON.stringify(b);
+    const rCh = JSON.stringify(r) !== JSON.stringify(b);
+    if (!lCh && !rCh) { if (b) out.push(b); return; }
+    if (lCh && !rCh)  { if (l) out.push(l); return; }
+    if (!lCh && rCh)  { if (r) out.push(r); return; }
+    if (l) out.push(l); // os dois mudaram (raro) — prioriza a ação local que disparou este push
+  });
+  return out;
+}
+
+function mergeStateForPush(remoteRoot) {
+  const base = fbLastSynced || {};
+  const remote = remoteRoot || {};
+  const merged = {};
+  SYNC_KEYS.forEach(k => { merged[k] = mergeList3way(base[k], S[k]||[], remote[k]); });
+  return merged;
+}
 
 async function initFB(joinRoom) {
   if(fbOk) return;
   fbOk = true;
   try {
     const {initializeApp} = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
-    const {getDatabase,ref,onValue,set,get} = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js');
+    const {getDatabase,ref,onValue,runTransaction,get} = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js');
     fbDB = getDatabase(initializeApp(FB_CFG));
-    fbSet = set;
+    fbTxn = runTransaction;
     fbRef = ref(fbDB, 'rooms/' + S.room);
     if (joinRoom) {
       toast('🔄 Carregando sala...');
       try {
         const snap = await get(fbRef);
-        if (snap.exists()) { mergeRemote(snap.val(), true); salvar(); renderTudo(); toast('✅ Dados carregados!'); }
+        if (snap.exists()) { mergeRemote(snap.val(), true); fbLastSynced=snapshotLists(S); salvar(); renderTudo(); toast('✅ Dados carregados!'); }
       } catch(_) {}
     } else {
       fbPush('init', '');
@@ -928,6 +965,7 @@ async function initFB(joinRoom) {
         setSyncDot(true);
         if (d._user && d._user !== S.nome && d._desc) toast((d._act==='del'?'🗑️':'💸')+' '+d._user+': '+d._desc);
       }
+      fbLastSynced = snapshotLists(S);
     });
     setSyncDot(true);
   } catch(_) { setSyncDot(false); }
@@ -949,13 +987,25 @@ function mergeRemote(d, force) {
 }
 
 function fbPush(act, desc) {
-  if (!fbDB || !fbSet || !fbRef) return;
+  if (!fbDB || !fbTxn || !fbRef) return;
   fbMs = Date.now();
-  fbSet(fbRef, {
-    gastos: S.gastos||[], entradas: S.entradas||[], fixas: S.fixas||[],
-    cartoes: S.cartoes||[], metas: S.metas||[], dividas: S.dividas||[],
-    salP1: S.salP1||0, salP2: S.salP2||0, nomeP2: S.nomeP2||'',
-    _by: S.nome, _user: S.nome, _act: act, _desc: desc, _ts: fbMs
+  fbTxn(fbRef, (curr) => {
+    const merged = mergeStateForPush(curr);
+    return {
+      gastos: merged.gastos, entradas: merged.entradas, fixas: merged.fixas,
+      cartoes: merged.cartoes, metas: merged.metas, dividas: merged.dividas,
+      salP1: S.salP1||0, salP2: S.salP2||0, nomeP2: S.nomeP2||'',
+      _by: S.nome, _user: S.nome, _act: act, _desc: desc, _ts: fbMs
+    };
+  }).then((res) => {
+    if (res && res.committed && res.snapshot) {
+      const val = res.snapshot.val();
+      if (val) {
+        SYNC_KEYS.forEach(k => { S[k] = val[k]||[]; });
+        fbLastSynced = snapshotLists(S);
+        salvar(); renderTudo();
+      }
+    }
   }).catch(()=>{});
 }
 
