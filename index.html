@@ -1486,9 +1486,23 @@ function rCartoes() {
     const fechaTxt=dias===0?'Fecha hoje':dias<=2?`Fecha em ${dias}d`:`Fecha em ${dias} dias`;
     const barColor=pct>=90?'rgba(244,63,94,0.8)':pct>=70?'rgba(245,158,11,0.8)':'rgba(255,255,255,0.75)';
     const flag={'Visa':'VISA','Mastercard':'MC','Elo':'ELO','Amex':'AMEX'}[cc.bandeira]||'💳';
+    // Fatura fechada (ciclo anterior) — já fechou, aguardando pagamento
+    let pIni,pFim;
+    if(hd>f){pIni=new Date(hoje_d.getFullYear(),hoje_d.getMonth()-1,f+1);pFim=new Date(hoje_d.getFullYear(),hoje_d.getMonth(),f);}
+    else{pIni=new Date(hoje_d.getFullYear(),hoje_d.getMonth()-2,f+1);pFim=new Date(hoje_d.getFullYear(),hoje_d.getMonth()-1,f);}
+    const gFech=(S.gastos||[]).filter(g=>g.cartaoId===cc.id&&g.tipo==='credito').filter(g=>{const d=new Date(g.data+'T12:00:00');return d>=pIni&&d<=pFim;}).reduce((s,g)=>s+Number(g.valor),0);
+    const v=Number(cc.vence||8);
+    const vencDate = v>f ? new Date(pFim.getFullYear(),pFim.getMonth(),v) : new Date(pFim.getFullYear(),pFim.getMonth()+1,v);
+    const diasVenc = Math.round((vencDate-new Date(hoje_d.getFullYear(),hoje_d.getMonth(),hd))/86400000);
+    const vencTxt = diasVenc>1?`vence em ${diasVenc} dias`:diasVenc===1?'vence amanhã':diasVenc===0?'vence hoje':diasVenc===-1?'venceu há 1 dia':`venceu há ${Math.abs(diasVenc)} dias`;
+    const fechadaHtml = gFech>0 ? `<div class="cc-fechada" style="position:relative;z-index:1;background:rgba(0,0,0,.32);border-radius:10px;padding:8px 10px;margin:8px 0 2px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span style="font-size:11.5px;color:#fff;font-weight:600;">🔴 Fatura fechada · ${fmt(gFech)}</span>
+        <span style="font-size:11px;color:${diasVenc<0?'#FFD7DC':'rgba(255,255,255,.85)'};font-weight:700;">${vencTxt}</span>
+      </div>` : '';
     return `<div class="cc-card" style="background:linear-gradient(135deg,${cc.cor},${cc.cor}cc)" onclick="openExtrato('${cc.id}')">
       <div class="cc-top"><span class="cc-name">${cc.nome}</span><span class="cc-flag">${flag}</span></div>
       <div style="position:relative;z-index:1;"><div class="cc-lbl">Fatura atual</div><div class="cc-value">${fmt(gAt)}</div></div>
+      ${fechadaHtml}
       <div class="cc-foot">${lim>0?`<div class="cc-bar-bg"><div class="cc-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>`:''}<div class="cc-info-row"><span>${fechaTxt}</span>${lim>0?`<span>${pct}% de ${fmt(lim)}</span>`:''}</div></div>
     </div>`;
   }).join('') + '</div>';
