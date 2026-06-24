@@ -1637,7 +1637,7 @@ function rDividas(){
   dl.innerHTML=divs.map((d,i)=>{
     const p=Math.min(100,Math.round(((Number(d.original||d.saldo)-Number(d.saldo))/Number(d.original||d.saldo))*100)||0);
     const c2=p<25?'#F43F5E':p<50?'#F59E0B':p<75?'#3B82F6':'#22D07A';
-    return `<div class="debt-item"><div class="debt-item-top"><div><div class="debt-item-name">${d.nome}${i===0?'<span class="debt-focus">FOCO</span>':''}</div><div class="debt-parcela">${fmt(d.parcela)}/mês${d.juros?' · '+d.juros+'% a.m.':''}</div></div><div><div class="debt-saldo">${fmt(d.saldo)}</div><div class="debt-pct" style="color:${c2}">${p}% pago</div></div></div><div style="height:6px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden;"><div style="height:100%;width:${p}%;background:${c2};border-radius:4px;transition:width .6s;"></div></div></div>`;
+    return `<div class="debt-item"><div class="debt-item-top"><div><div class="debt-item-name">${d.nome}${i===0?'<span class="debt-focus">FOCO</span>':''}</div><div class="debt-parcela">${fmt(d.parcela)}/mês${d.juros?' · '+d.juros+'% a.m.':''}</div></div><div style="display:flex;align-items:flex-start;gap:6px;"><div style="text-align:right;"><div class="debt-saldo">${fmt(d.saldo)}</div><div class="debt-pct" style="color:${c2}">${p}% pago</div></div><button class="tx-del" onclick="delDivida('${d.id}',event)">×</button></div></div><div style="height:6px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden;"><div style="height:100%;width:${p}%;background:${c2};border-radius:4px;transition:width .6s;"></div></div></div>`;
   }).join('');
 }
 
@@ -1775,6 +1775,15 @@ function saveMeta(){
   S.metas.push({id:uid(),emoji:document.getElementById('m-emoji').value||'🎯',nome,total,guardado:parseFloat(document.getElementById('m-guardado').value)||0});
   document.getElementById('m-nome').value='';document.getElementById('m-total').value='';document.getElementById('m-guardado').value='';
   closeModal('modal-meta');save('add','Meta: '+nome);rMetas();rGoalsHome();toast('Meta criada ✓');
+}
+function delDivida(id,e){
+  e?.stopPropagation();
+  const d=(S.dividas||[]).find(x=>x.id===id);
+  if(!confirm('Remover dívida "'+(d?d.nome:'')+'"?'))return;
+  S.dividas=(S.dividas||[]).filter(x=>x.id!==id);
+  save('del',d?d.nome:'dívida');
+  rDividas();
+  toast('Dívida removida');
 }
 function saveDivida(){
   const nome=document.getElementById('d-nome').value.trim();
