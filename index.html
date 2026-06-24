@@ -1478,15 +1478,49 @@ function selBar(i) {
 
 // ── CARTÕES ──
 let ccAberto = null;
+// Calcula o total de uma fatura específica (por chave ano-mês), sem depender da data de hoje
+function getFaturaTotal(ccId, fatKey) {
+  const cc = (S.cartoes||[]).find(c=>c.id===ccId);
+  if (!cc) return 0;
+  const [anoStr, mesStr] = fatKey.split('-');
+  const ano = Number(anoStr), mes = Number(mesStr);
+  const f = Number(cc.fecha||1);
+  const pFim = new Date(ano, mes, f);
+  const pIni = new Date(ano, mes-1, f+1);
+  return (S.gastos||[]).filter(g=>g.cartaoId===ccId&&g.tipo==='credito')
+    .filter(g=>{const d=new Date(g.data+'T12:00:00');return d>=pIni&&d<=pFim;})
+    .reduce((s,g)=>s+Number(g.valor),0);
+}
 function toggleFaturaPaga(ccId, fatKey) {
   const cc = (S.cartoes||[]).find(c=>c.id===ccId);
   if (!cc) return;
   if (!cc.faturasPagas) cc.faturasPagas = [];
   const idx = cc.faturasPagas.indexOf(fatKey);
-  if (idx>=0) { cc.faturasPagas.splice(idx,1); toast('Marcada como não paga'); }
-  else { cc.faturasPagas.push(fatKey); toast('✅ Fatura marcada como paga'); }
-  save('edit', cc.nome+' fatura');
-  rCartoes();
+  const refKey = ccId+'|'+fatKey;
+  if (idx>=0) {
+    // Desfazer: tira o status de paga e remove o débito de saída vinculado (se existir)
+    cc.faturasPagas.splice(idx,1);
+    const antes = (S.gastos||[]).length;
+    S.gastos = (S.gastos||[]).filter(g=>g.fatPagamentoRef!==refKey);
+    const removeuDebito = (S.gastos||[]).length !== antes;
+    save('edit', cc.nome+' fatura');
+    toast(removeuDebito ? 'Pagamento desfeito (saída da conta também removida)' : 'Marcada como não paga');
+  } else {
+    cc.faturasPagas.push(fatKey);
+    const total = getFaturaTotal(ccId, fatKey);
+    let lancouDebito = false;
+    if (total > 0 && confirm('Lançar também a saída de '+fmt(total)+' da conta (débito), representando esse pagamento?')) {
+      (S.gastos||(S.gastos=[])).push({
+        id: uid(), desc: 'Pagamento fatura '+cc.nome, valor: total, cat: '📦 Outros',
+        quem: S.nome, data: hoje(), tipo: 'debito', cartaoId: null,
+        fatPagamentoRef: refKey
+      });
+      lancouDebito = true;
+    }
+    save('edit', cc.nome+' fatura');
+    toast(lancouDebito ? '✅ Paga + débito de '+fmt(total)+' lançado' : '✅ Fatura marcada como paga');
+  }
+  renderTudo();
 }
 function rCartoes() {
   const cw = document.getElementById('cc-list-wrap');
