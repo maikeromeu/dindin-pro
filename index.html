@@ -251,6 +251,13 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1)opacity(.3);
 /* ── EXTRATO ── */
 .ext-inner{padding:12px 16px;}
 .fat-block{margin-bottom:16px;}
+.fat-graf{display:flex;align-items:flex-end;gap:6px;padding:4px 0 14px;margin-bottom:10px;border-bottom:1px solid var(--border2);overflow-x:auto;}
+.fat-bar-col{flex:1;min-width:34px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;}
+.fat-bar-val{font-size:8.5px;color:var(--t3);font-weight:700;white-space:nowrap;}
+.fat-bar{width:18px;border-radius:5px 5px 2px 2px;transition:opacity .15s;}
+.fat-bar-col:active .fat-bar{opacity:.7;}
+.fat-bar-lbl{font-size:9.5px;color:var(--t2);font-weight:700;text-transform:uppercase;}
+.fat-status{font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:8px;border:1px solid;cursor:pointer;white-space:nowrap;}
 .fat-hd{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border2);margin-bottom:8px;}
 .fat-title{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;}
 .fat-total{font-size:13px;font-weight:700;color:var(--red);font-family:var(--m);}
@@ -1316,7 +1323,7 @@ function txHTML(g) {
     </div>
   </div>`;
 }
-function delGasto(id,e){e.stopPropagation();S.gastos=(S.gastos||[]).filter(x=>x.id!==id);save('del','gasto');renderTudo();toast('Gasto removido');}
+function delGasto(id,e){e?.stopPropagation();S.gastos=(S.gastos||[]).filter(x=>x.id!==id);save('del','gasto');renderTudo();toast('Gasto removido');}
 
 // ── FIXAS ──
 function rFixas() {
@@ -1381,7 +1388,7 @@ function confirmarFixa() {
   toast('✅ '+f.nome+' paga!');
 }
 function delFixa(id,e){
-  e.stopPropagation();
+  e?.stopPropagation();
   const f=(S.fixas||[]).find(x=>x.id===id);
   if(!confirm('Remover "'+(f?f.nome:'despesa')+'"?'))return;
   S.fixas=(S.fixas||[]).filter(x=>x.id!==id);
@@ -1471,6 +1478,16 @@ function selBar(i) {
 
 // ── CARTÕES ──
 let ccAberto = null;
+function toggleFaturaPaga(ccId, fatKey) {
+  const cc = (S.cartoes||[]).find(c=>c.id===ccId);
+  if (!cc) return;
+  if (!cc.faturasPagas) cc.faturasPagas = [];
+  const idx = cc.faturasPagas.indexOf(fatKey);
+  if (idx>=0) { cc.faturasPagas.splice(idx,1); toast('Marcada como não paga'); }
+  else { cc.faturasPagas.push(fatKey); toast('✅ Fatura marcada como paga'); }
+  save('edit', cc.nome+' fatura');
+  rCartoes();
+}
 function rCartoes() {
   const cw = document.getElementById('cc-list-wrap');
   if (!(S.cartoes||[]).length) { cw.innerHTML='<div class="tx-empty" style="padding:28px">Nenhum cartão cadastrado</div>'; return; }
@@ -1495,10 +1512,20 @@ function rCartoes() {
     const vencDate = v>f ? new Date(pFim.getFullYear(),pFim.getMonth(),v) : new Date(pFim.getFullYear(),pFim.getMonth()+1,v);
     const diasVenc = Math.round((vencDate-new Date(hoje_d.getFullYear(),hoje_d.getMonth(),hd))/86400000);
     const vencTxt = diasVenc>1?`vence em ${diasVenc} dias`:diasVenc===1?'vence amanhã':diasVenc===0?'vence hoje':diasVenc===-1?'venceu há 1 dia':`venceu há ${Math.abs(diasVenc)} dias`;
-    const fechadaHtml = gFech>0 ? `<div class="cc-fechada" style="position:relative;z-index:1;background:rgba(0,0,0,.32);border-radius:10px;padding:8px 10px;margin:8px 0 2px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+    const fatKey = pFim.getFullYear()+'-'+pFim.getMonth();
+    const fatPaga = (cc.faturasPagas||[]).includes(fatKey);
+    const fechadaHtml = gFech>0 ? (
+      fatPaga ?
+      `<div class="cc-fechada" style="position:relative;z-index:1;background:rgba(34,208,122,.22);border-radius:10px;padding:8px 10px;margin:8px 0 2px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;" onclick="event.stopPropagation();toggleFaturaPaga('${cc.id}','${fatKey}')">
+        <span style="font-size:11.5px;color:#fff;font-weight:600;">✅ Fatura paga · ${fmt(gFech)}</span>
+        <span style="font-size:10.5px;color:rgba(255,255,255,.75);font-weight:700;">desfazer</span>
+      </div>`
+      :
+      `<div class="cc-fechada" style="position:relative;z-index:1;background:rgba(0,0,0,.32);border-radius:10px;padding:8px 10px;margin:8px 0 2px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;" onclick="event.stopPropagation();toggleFaturaPaga('${cc.id}','${fatKey}')">
         <span style="font-size:11.5px;color:#fff;font-weight:600;">🔴 Fatura fechada · ${fmt(gFech)}</span>
         <span style="font-size:11px;color:${diasVenc<0?'#FFD7DC':'rgba(255,255,255,.85)'};font-weight:700;">${vencTxt}</span>
-      </div>` : '';
+      </div>`
+    ) : '';
     return `<div class="cc-card" style="background:linear-gradient(135deg,${cc.cor},${cc.cor}cc)" onclick="openExtrato('${cc.id}')">
       <div class="cc-top"><span class="cc-name">${cc.nome}</span><span class="cc-flag">${flag}</span></div>
       <div style="position:relative;z-index:1;"><div class="cc-lbl">Fatura atual</div><div class="cc-value">${fmt(gAt)}</div></div>
@@ -1523,14 +1550,45 @@ function openExtrato(ccId) {
     const d=new Date(g.data+'T12:00:00'), fl=Number(cc.fecha||1);
     let fm=d.getMonth(),fa=d.getFullYear();
     if(d.getDate()>fl){fm++;if(fm>11){fm=0;fa++;}}
-    const fk=fa+'-'+String(fm).padStart(2,'0');
+    const fk=fa+'-'+fm;
     if(!faturas[fk])faturas[fk]={mes:fm,ano:fa,gs:[]};
     faturas[fk].gs.push(g);
   });
-  let html='';
-  Object.entries(faturas).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([,fat])=>{
+  const fl=Number(cc.fecha||1), vc=Number(cc.vence||8);
+  const hoje=new Date(); const hojeSemHora=new Date(hoje.getFullYear(),hoje.getMonth(),hoje.getDate());
+  const lista = Object.entries(faturas).sort((a,b)=>b[0].localeCompare(a[0]));
+
+  function statusFatura(fat, fk) {
+    const fechaDate = new Date(fat.ano, fat.mes, fl);
+    const vencDate = vc>fl ? new Date(fat.ano,fat.mes,vc) : new Date(fat.ano,fat.mes+1,vc);
+    const paga = (cc.faturasPagas||[]).includes(fk);
+    if (paga) return {tag:'paga', label:'✅ Paga', cor:'#22D07A'};
+    if (hojeSemHora < fechaDate) return {tag:'aberta', label:'🟡 Em aberto', cor:'#F59E0B'};
+    if (hojeSemHora <= vencDate) return {tag:'pendente', label:'🟠 Pendente', cor:'#F59E0B'};
+    return {tag:'atrasada', label:'🔴 Atrasada', cor:'#F43F5E'};
+  }
+
+  // ── Mini gráfico de barras (últimos até 6 meses) ──
+  const ultimos = lista.slice(0,6).reverse();
+  const maxVal = Math.max(1, ...ultimos.map(([,fat])=>fat.gs.reduce((s,g)=>s+Number(g.valor),0)));
+  let graf = '<div class="fat-graf">';
+  ultimos.forEach(([fk,fat])=>{
+    const tot = fat.gs.reduce((s,g)=>s+Number(g.valor),0);
+    const st = statusFatura(fat, fk);
+    const h = Math.max(6, Math.round((tot/maxVal)*64));
+    graf += `<div class="fat-bar-col" onclick="event.stopPropagation();toggleFaturaPaga('${cc.id}','${fk}');openExtrato('${cc.id}')" title="${MESES[fat.mes]} ${fat.ano}">
+      <div class="fat-bar-val">${fmt(tot).replace('R$','')}</div>
+      <div class="fat-bar" style="height:${h}px;background:${st.cor}"></div>
+      <div class="fat-bar-lbl">${MESES[fat.mes].slice(0,3)}</div>
+    </div>`;
+  });
+  graf += '</div>';
+
+  let html = graf;
+  lista.forEach(([fk,fat])=>{
     const ftot=fat.gs.reduce((s,g)=>s+Number(g.valor),0);
-    html+=`<div class="fat-block"><div class="fat-hd"><span class="fat-title">${MESES[fat.mes]} ${fat.ano}</span><span class="fat-total">-${fmt(ftot)}</span></div>`;
+    const st = statusFatura(fat, fk);
+    html+=`<div class="fat-block"><div class="fat-hd"><span class="fat-title">${MESES[fat.mes]} ${fat.ano}</span><span style="display:flex;align-items:center;gap:8px;"><span class="fat-total">-${fmt(ftot)}</span><span class="fat-status" style="color:${st.cor};border-color:${st.cor}55;" onclick="event.stopPropagation();toggleFaturaPaga('${cc.id}','${fk}');openExtrato('${cc.id}')">${st.label}</span></span></div>`;
     const byDay={};
     fat.gs.forEach(g=>{if(!byDay[g.data])byDay[g.data]=[];byDay[g.data].push(g);});
     Object.keys(byDay).sort((a,b)=>new Date(b)-new Date(a)).forEach(day=>{
@@ -1679,7 +1737,7 @@ function saveEntrada(){
   closeModal('modal-entrada');save('add','Entrada: '+desc);renderTudo();toast('💰 '+fmt(valor)+' adicionado!');
 }
 function delEntrada(id,e){
-  e.stopPropagation();
+  e?.stopPropagation();
   S.entradas=(S.entradas||[]).filter(x=>x.id!==id);
   save('del','entrada');renderTudo();toast('Entrada removida');
 }
