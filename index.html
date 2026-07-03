@@ -905,18 +905,15 @@ let S = {
 };
 
 // ── FIREBASE ──
-let fbDB=null, fbRef=null, fbTxn=null, fbMs=0, fbOk=false, fbLastSynced=null;
+let fbDB=null, fbRef=null, fbSet=null, fbGet=null, fbMs=0, fbOk=false, fbLastSynced=null;
 const SYNC_KEYS = ['gastos','entradas','fixas','cartoes','metas','dividas'];
 
-// Tira uma "foto" das listas sincronizáveis — serve de base para o merge de 3 vias
 function snapshotLists(src) {
   const o = {};
   SYNC_KEYS.forEach(k => { o[k] = JSON.parse(JSON.stringify(src[k]||[])); });
   return o;
 }
 
-// Merge de 3 vias por item (base = último estado sincronizado, local = este device, remoto = outro device)
-// Decide o que manter sem nunca perder um item que só um dos dois lados alterou.
 function mergeList3way(base, local, remote) {
   base = base||[]; local = local||[]; remote = remote||[];
   const bM = new Map(base.map(i=>[i.id,i]));
@@ -931,7 +928,7 @@ function mergeList3way(base, local, remote) {
     if (!lCh && !rCh) { if (b) out.push(b); return; }
     if (lCh && !rCh)  { if (l) out.push(l); return; }
     if (!lCh && rCh)  { if (r) out.push(r); return; }
-    if (l) out.push(l); // os dois mudaram (raro) — prioriza a ação local que disparou este push
+    if (l) out.push(l);
   });
   return out;
 }
@@ -949,9 +946,10 @@ async function initFB(joinRoom) {
   fbOk = true;
   try {
     const {initializeApp} = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
-    const {getDatabase,ref,onValue,runTransaction,get} = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js');
+    const {getDatabase,ref,onValue,set,get} = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js');
     fbDB = getDatabase(initializeApp(FB_CFG));
-    fbTxn = runTransaction;
+    fbSet = set;
+    fbGet = get;
     fbRef = ref(fbDB, 'rooms/' + S.room);
     if (joinRoom) {
       toast('🔄 Carregando sala...');
@@ -980,40 +978,37 @@ async function initFB(joinRoom) {
 
 function mergeRemote(d, force) {
   let ch = false;
-  // Dados financeiros
   ['gastos','fixas','cartoes','metas','entradas','dividas'].forEach(k => {
     const r = d[k] !== undefined ? (d[k]||[]) : null;
     if (r !== null && JSON.stringify(r) !== JSON.stringify(S[k]||[])) { S[k]=r; ch=true; }
   });
-  // Salários
   if (d.salP1 !== undefined && d.salP1 !== S.salP1) { S.salP1 = d.salP1; ch=true; }
   if (d.salP2 !== undefined && d.salP2 !== S.salP2) { S.salP2 = d.salP2; ch=true; }
-  // Nome parceiro(a) — só atualiza se veio do outro device
   if (d.nomeP2 && d._by !== S.nome && d.nomeP2 !== S.nomeP2) { S.nomeP2 = d.nomeP2; ch=true; }
   return ch || force;
 }
 
-function fbPush(act, desc) {
-  if (!fbDB || !fbTxn || !fbRef) return;
+// Sincronização: lê estado atual do Firebase, mescla localmente, escreve de volta.
+// Substituímos runTransaction (que falha silenciosamente) por get→merge→set (mais confiável e rastreável).
+async function fbPush(act, desc) {
+  if (!fbDB || !fbSet || !fbGet || !fbRef) return;
   fbMs = Date.now();
-  fbTxn(fbRef, (curr) => {
+  try {
+    const snap = await fbGet(fbRef);
+    const curr = snap.exists() ? snap.val() : null;
     const merged = mergeStateForPush(curr);
-    return {
+    await fbSet(fbRef, {
       gastos: merged.gastos, entradas: merged.entradas, fixas: merged.fixas,
       cartoes: merged.cartoes, metas: merged.metas, dividas: merged.dividas,
       salP1: S.salP1||0, salP2: S.salP2||0, nomeP2: S.nomeP2||'',
-      _by: S.nome, _user: S.nome, _act: act, _desc: desc, _ts: fbMs
-    };
-  }).then((res) => {
-    if (res && res.committed && res.snapshot) {
-      const val = res.snapshot.val();
-      if (val) {
-        SYNC_KEYS.forEach(k => { S[k] = val[k]||[]; });
-        fbLastSynced = snapshotLists(S);
-        salvar(); renderTudo();
-      }
-    }
-  }).catch(()=>{});
+      _by: S.nome, _user: S.nome, _act: act, _desc: desc, _ts: Date.now()
+    });
+    fbLastSynced = snapshotLists(S);
+    setSyncDot(true);
+  } catch(e) {
+    setSyncDot(false);
+    toast('⚠️ Falha ao sincronizar. Verifique sua conexão.');
+  }
 }
 
 function salvar() { localStorage.setItem('ddpv4', JSON.stringify(S)); }
