@@ -982,9 +982,17 @@ function mergeRemote(d, force) {
     const r = d[k] !== undefined ? (d[k]||[]) : null;
     if (r !== null && JSON.stringify(r) !== JSON.stringify(S[k]||[])) { S[k]=r; ch=true; }
   });
-  if (d.salP1 !== undefined && d.salP1 !== S.salP1) { S.salP1 = d.salP1; ch=true; }
-  if (d.salP2 !== undefined && d.salP2 !== S.salP2) { S.salP2 = d.salP2; ch=true; }
-  if (d.nomeP2 && d._by !== S.nome && d.nomeP2 !== S.nomeP2) { S.nomeP2 = d.nomeP2; ch=true; }
+  if (d._by && d._by !== S.nome) {
+    // Dados vieram do PARCEIRO:
+    // salP1 deles = próprio salário deles = nosso salP2 (salário do parceiro)
+    if (d.salP1 !== undefined && d.salP1 !== S.salP2) { S.salP2 = d.salP1; ch=true; }
+    // NÃO atualiza S.salP1 (nosso próprio salário) nem S.nomeP2 (já sabemos nosso parceiro)
+  } else {
+    // Eco dos nossos próprios dados voltando do Firebase
+    if (d.salP1 !== undefined && d.salP1 !== S.salP1) { S.salP1 = d.salP1; ch=true; }
+    if (d.salP2 !== undefined && d.salP2 !== S.salP2) { S.salP2 = d.salP2; ch=true; }
+    if (d.nomeP2 && d.nomeP2 !== S.nomeP2) { S.nomeP2 = d.nomeP2; ch=true; }
+  }
   return ch || force;
 }
 
