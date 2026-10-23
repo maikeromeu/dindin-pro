@@ -1,0 +1,27 @@
+// SÓ USE SE VOCÊ NÃO TIVER o seu api/chat.js.
+// Copie este arquivo para  api/chat.js  (pasta "api" na raiz do projeto).
+// Na Vercel: Settings → Environment Variables → ANTHROPIC_API_KEY = sua chave.
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Método não permitido' });
+  try {
+    const { system, messages } = req.body || {};
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-5-5',
+        max_tokens: 700,
+        system,
+        messages: (messages || []).slice(-10)
+      })
+    });
+    const data = await r.json();
+    return res.status(r.status).json(data);
+  } catch (e) {
+    return res.status(500).json({ error: 'Falha ao falar com a IA' });
+  }
+}
