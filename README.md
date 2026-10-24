@@ -1,12 +1,12 @@
 # DinDin Pro
 
-Controle financeiro para casais, com sincronização em tempo real (Firebase) e Conselheiro IA.
+Controle financeiro para casais com sincronização em tempo real (Firebase) e Conselheiro IA.
 
-## Estrutura
-- `index.html`  → o app inteiro (HTML + CSS + JS)
-- `icon-192.png`, `icon-512.png` → ícones
-- `api/chat.js` → função serverless da IA (NÃO está neste pacote: use a do seu projeto atual)
+## Arquivos
+- `index.html` — o app inteiro
+- `icon-192.png`, `icon-512.png` — ícones
+- `netlify.toml` — configuração do deploy (publica a raiz e liga `/api/chat` à função)
+- `netlify/functions/chat.js` — função da IA (usa a variável `ANTHROPIC_API_KEY` no Netlify)
 
-## Deploy
-Importe este repositório na Vercel (Add New → Project). Não precisa de build.
-A IA precisa da variável de ambiente `ANTHROPIC_API_KEY` configurada na Vercel (Settings → Environment Variables).
+## Como atualizar
+Troque o `index.html` aqui no GitHub (Add file → Upload files → Commit). O Netlify publica sozinho.
